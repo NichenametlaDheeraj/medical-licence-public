@@ -325,9 +325,9 @@
                                value="{{ bd.proprietor_name if bd else '' }}" placeholder="Full legal name of proprietor">
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label">Father / Husband Name</label>
+                        <label class="form-label">Father Name</label>
                         <input type="text" name="proprietor_father_husband" class="form-control"
-                               value="{{ bd.proprietor_father_husband if bd else '' }}" placeholder="Father / Husband name">
+                               value="{{ bd.proprietor_father_husband if bd else '' }}" placeholder="Father Name">
                     </div>
                     <div class="col-md-4">
                         <label class="form-label">Mobile Number</label>
@@ -392,8 +392,8 @@
                                 <input type="text" name="partner_name[]" class="form-control form-control-sm" value="{{ p.full_name or '' }}" placeholder="Partner name" required>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Father / Husband Name</label>
-                                <input type="text" name="partner_father[]" class="form-control form-control-sm" value="{{ p.father_husband_name or '' }}">
+                                <label class="form-label">Father Name</label>
+                                <input type="text" name="partner_father[]" class="form-control form-control-sm" value="{{ p.father_husband_name or '' }}" placeholder="Father Name">
                             </div>
                             <div class="col-md-3">
                                 <label class="form-label">Role</label>
@@ -588,8 +588,8 @@
                             <input type="text" name="pharma_name[]" class="form-control form-control-sm" value="{{ ph.full_name or '' }}" required>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Father / Husband Name</label>
-                            <input type="text" name="pharma_father[]" class="form-control form-control-sm" value="{{ ph.father_husband_name or '' }}">
+                            <label class="form-label">Father Name</label>
+                            <input type="text" name="pharma_father[]" class="form-control form-control-sm" value="{{ ph.father_husband_name or '' }}" placeholder="Father Name">
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Qualification</label>
@@ -848,8 +848,8 @@ document.addEventListener('DOMContentLoaded', function() {
                   <input type="text" name="partner_name[]" class="form-control form-control-sm" placeholder="Full legal name" required>
               </div>
               <div class="col-md-4">
-                  <label class="form-label">Father / Husband Name</label>
-                  <input type="text" name="partner_father[]" class="form-control form-control-sm" placeholder="Father / Husband">
+                  <label class="form-label">Father Name</label>
+                  <input type="text" name="partner_father[]" class="form-control form-control-sm" placeholder="Father Name">
               </div>
               <div class="col-md-3">
                   <label class="form-label">Role</label>
@@ -982,8 +982,8 @@ document.addEventListener('DOMContentLoaded', function() {
                   <input type="text" name="pharma_name[]" class="form-control form-control-sm" required>
               </div>
               <div class="col-md-4">
-                  <label class="form-label">Father / Husband Name</label>
-                  <input type="text" name="pharma_father[]" class="form-control form-control-sm">
+                  <label class="form-label">Father Name</label>
+                  <input type="text" name="pharma_father[]" class="form-control form-control-sm" placeholder="Father Name">
               </div>
               <div class="col-md-4">
                   <label class="form-label">Qualification</label>

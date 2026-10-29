@@ -85,7 +85,7 @@ def _add_sheet_business(wb, applications):
         'PAN', 'Email', 'Mobile', 'Alt Contact',
         'Door No', 'Floor', 'Street', 'Village', 'Gram Panchayat',
         'Mandal', 'District', 'State', 'PIN',
-        'Proprietor Name', 'Proprietor Father/Husband',
+        'Proprietor Name', 'Proprietor Father Name',
         'Proprietor DOB', 'Proprietor Mobile', 'Proprietor PAN',
         'LLP Name', 'LLPIN', 'Company Name', 'CIN',
         'Deed Date', 'Deed Reg Details',
@@ -139,7 +139,7 @@ def _add_sheet_business(wb, applications):
 def _add_sheet_partners(wb, applications):
     ws = wb.create_sheet('Partners')
     headers = [
-        'App Number', 'Partner #', 'Full Name', 'Father/Husband',
+        'App Number', 'Partner #', 'Full Name', 'Father Name',
         'Residential Address', 'Mobile', 'Email', 'PAN', 'Role',
         'Designated Partner', 'Authorized Signatory',
     ]
@@ -173,7 +173,7 @@ def _add_sheet_partners(wb, applications):
 def _add_sheet_pharmacists(wb, applications):
     ws = wb.create_sheet('Pharmacists')
     headers = [
-        'App Number', 'Full Name', 'Father/Husband', 'Qualification',
+        'App Number', 'Full Name', 'Father Name', 'Qualification',
         'Reg Number', 'Reg Authority', 'Reg Validity',
         'Mobile', 'Email', 'Appointment Date', 'Employment Status',
     ]
@@ -243,7 +243,7 @@ def _add_sheet_premises(wb, applications):
 def _add_sheet_building_owners(wb, applications):
     ws = wb.create_sheet('Building Owners')
     headers = [
-        'App Number', 'Full Name', 'Father/Husband',
+        'App Number', 'Full Name', 'Father Name',
         'Residential Address', 'Mobile', 'Ownership Doc Details',
     ]
     ws.append(headers)

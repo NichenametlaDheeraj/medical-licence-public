@@ -735,7 +735,7 @@ def _build_pharmacist_declaration(app, styles):
         ('1. Name & address of the proposed shop:', proposed_shop_text, 'normal'),
         ('2. Email ID<br/>&nbsp;&nbsp;&nbsp;&nbsp;Mobile No’s:', email_mobile_text, 'normal'),
         ('3. Full Name (Block Letters', full_name_text, 'normal'),
-        ('4. Father’s/Husband’s Name<br/>&nbsp;&nbsp;&nbsp;&nbsp;and his profession', father_prof_text, 'normal'),
+        ('4. Father’s Name<br/>&nbsp;&nbsp;&nbsp;&nbsp;and his profession', father_prof_text, 'normal'),
         ('5. Age', age_text, 'normal'),
         ('6. Permanent Address<br/>&nbsp;&nbsp;&nbsp;&nbsp;(Proof to be attached)', perm_addr_text, 'normal'),
         ('7. Present Residential Address', present_addr_text, 'normal'),
