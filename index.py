@@ -26,7 +26,16 @@ if is_serverless:
     if not os.path.exists(src_db):
         src_db = os.path.join(BASE_DIR, 'medical_agency.db')
     os.makedirs('/tmp', exist_ok=True)
-    if not os.path.exists(dest_db) and os.path.exists(src_db):
+    # Check if src_db is newer or dest_db does not exist
+    should_copy = not os.path.exists(dest_db)
+    if not should_copy and os.path.exists(src_db):
+        try:
+            if os.path.getmtime(src_db) > os.path.getmtime(dest_db):
+                should_copy = True
+        except Exception:
+            pass
+
+    if should_copy and os.path.exists(src_db):
         shutil.copyfile(src_db, dest_db)
         try:
             os.chmod(dest_db, 0o666)
