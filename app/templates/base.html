@@ -12,14 +12,22 @@
 </head>
 <body>
 {% if current_user.is_authenticated %}
+<!-- Sidebar Backdrop Overlay -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <!-- Sidebar -->
 <div class="sidebar" id="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-icon"><i class="bi bi-capsule-pill"></i></div>
-        <div class="brand-text">
-            <div class="brand-name">MedLicence</div>
-            <div class="brand-sub">Drug Licence System</div>
+    <div class="sidebar-brand d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <div class="brand-icon"><i class="bi bi-capsule-pill"></i></div>
+            <div class="brand-text">
+                <div class="brand-name">MedLicence</div>
+                <div class="brand-sub">Drug Licence System</div>
+            </div>
         </div>
+        <button class="sidebar-close-btn" id="sidebarCloseBtn" type="button" title="Close Sidebar" aria-label="Close Sidebar">
+            <i class="bi bi-x-lg"></i>
+        </button>
     </div>
     <nav class="sidebar-nav">
         <div class="nav-section-label">MAIN</div>
@@ -71,7 +79,9 @@
 <!-- Main Wrapper -->
 <div class="main-wrapper" id="mainWrapper">
     <div class="topbar">
-        <button class="sidebar-toggle" id="sidebarToggle"><i class="bi bi-list"></i></button>
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" title="Open Sidebar" aria-label="Open Sidebar">
+            <i class="bi bi-list"></i>
+        </button>
         <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
         <div class="topbar-actions">
             <a href="{{ url_for('applications.new_application') }}" class="btn btn-primary btn-sm">

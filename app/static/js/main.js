@@ -2,28 +2,58 @@
 
 document.addEventListener('DOMContentLoaded', function () {
 
-  // ── Sidebar Toggle ──────────────────────────────────────────────────────
-  const toggle  = document.getElementById('sidebarToggle');
-  const sidebar = document.getElementById('sidebar');
-  const wrapper = document.getElementById('mainWrapper');
+  // ── Sidebar Drawer Open / Close ──────────────────────────────────────────
+  const toggle   = document.getElementById('sidebarToggle');
+  const sidebar  = document.getElementById('sidebar');
+  const closeBtn = document.getElementById('sidebarCloseBtn');
+  const overlay  = document.getElementById('sidebarOverlay');
 
-  if (toggle && sidebar) {
-    toggle.addEventListener('click', function () {
-      if (window.innerWidth <= 768) {
-        sidebar.classList.toggle('open');
+  function openSidebar() {
+    if (sidebar) sidebar.classList.add('open');
+    if (overlay) overlay.classList.add('active');
+  }
+
+  function closeSidebar() {
+    if (sidebar) sidebar.classList.remove('open');
+    if (overlay) overlay.classList.remove('active');
+  }
+
+  if (toggle) {
+    toggle.addEventListener('click', function (e) {
+      e.stopPropagation();
+      if (sidebar && sidebar.classList.contains('open')) {
+        closeSidebar();
       } else {
-        sidebar.classList.toggle('collapsed');
-        if (wrapper) wrapper.classList.toggle('sidebar-collapsed');
+        openSidebar();
       }
     });
   }
 
-  // Close sidebar on mobile when clicking outside
+  if (closeBtn) {
+    closeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      closeSidebar();
+    });
+  }
+
+  if (overlay) {
+    overlay.addEventListener('click', function () {
+      closeSidebar();
+    });
+  }
+
+  // Close sidebar when clicking outside or pressing Escape
   document.addEventListener('click', function (e) {
-    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) {
-      if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
-        sidebar.classList.remove('open');
+    if (sidebar && sidebar.classList.contains('open')) {
+      if (!sidebar.contains(e.target) && (!toggle || !toggle.contains(e.target))) {
+        closeSidebar();
       }
+    }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape' && sidebar && sidebar.classList.contains('open')) {
+      closeSidebar();
     }
   });
 
