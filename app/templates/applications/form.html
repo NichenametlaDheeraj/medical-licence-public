@@ -213,19 +213,19 @@
                         {% set lf = (app.licence_forms or '').split(',') if app and app.licence_forms else ['Form20', 'Form21'] %}
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="licence_forms" value="Form20" id="lf_Form20" {% if 'Form20' in lf %}checked{% endif %}>
-                            <label class="form-check-label" for="lf_Form20"><strong>Form 20</strong> (Retail General)</label>
+                            <label class="form-check-label" for="lf_Form20"><strong>Form 20</strong></label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="licence_forms" value="Form21" id="lf_Form21" {% if 'Form21' in lf %}checked{% endif %}>
-                            <label class="form-check-label" for="lf_Form21"><strong>Form 21</strong> (Retail Sch C/C1)</label>
+                            <label class="form-check-label" for="lf_Form21"><strong>Form 21</strong></label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="licence_forms" value="Form20B" id="lf_Form20B" {% if 'Form20B' in lf %}checked{% endif %}>
-                            <label class="form-check-label" for="lf_Form20B"><strong>Form 20B</strong> (Wholesale General)</label>
+                            <label class="form-check-label" for="lf_Form20B"><strong>Form 20B</strong></label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" name="licence_forms" value="Form21B" id="lf_Form21B" {% if 'Form21B' in lf %}checked{% endif %}>
-                            <label class="form-check-label" for="lf_Form21B"><strong>Form 21B</strong> (Wholesale Sch C/C1)</label>
+                            <label class="form-check-label" for="lf_Form21B"><strong>Form 21B</strong></label>
                         </div>
                     </div>
                 </div>
