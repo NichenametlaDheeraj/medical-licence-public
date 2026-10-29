@@ -1,0 +1,29 @@
+# Python bytecode & cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv/
+
+# Environment configuration (secrets)
+.env
+
+# Runtime uploads and generated docs
+uploads/*
+!uploads/.gitkeep
+generated_documents/*
+!generated_documents/.gitkeep
+
+# Operating system files
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Editor directories
+.vscode/
+.idea/

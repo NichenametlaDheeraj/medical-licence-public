@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block title %}{% if current_user.role == 'admin' %}All Applications{% else %}My Applications{% endif %}{% endblock %}
+{% block page_title %}{% if current_user.role == 'admin' %}All Applications{% else %}My Applications{% endif %}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="mb-0">{% if current_user.role == 'admin' %}All Applications{% else %}My Applications{% endif %} <span class="badge bg-navy">{{ applications|length }}</span></h4>
+    <a href="{{ url_for('applications.new_application') }}" class="btn btn-primary"><i class="bi bi-plus"></i> New Application</a>
+</div>
+<div class="card-glass">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>App Number</th><th>Firm Name</th><th>Constitution</th>
+                    <th>Licence Type</th><th>Status</th><th>Updated</th><th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for app in applications %}
+            <tr>
+                <td><span class="app-number">{{ app.app_number }}</span></td>
+                <td>{{ (app.business_details.firm_name if app.business_details else None) or '—' }}</td>
+                <td><span class="badge-constitution badge-{{ app.business_constitution or 'other' }}">{{ (app.business_constitution or '—')|replace('_',' ')|title }}</span></td>
+                <td>{{ (app.licence_type or '—')|title }}</td>
+                <td><span class="status-badge status-{{ app.status }}">{{ (app.status or '')|replace('_',' ')|title }}</span></td>
+                <td><small>{{ app.updated_at.strftime('%d/%m/%Y') if app.updated_at else '—' }}</small></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ url_for('applications.view_application', app_id=app.id) }}" class="btn btn-outline-navy"><i class="bi bi-eye"></i></a>
+                        <a href="{{ url_for('applications.edit_application', app_id=app.id) }}" class="btn btn-outline-warning"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger" title="PDF"><i class="bi bi-file-pdf"></i></a>
+                        <a href="{{ url_for('exports.export_single', app_id=app.id) }}" class="btn btn-outline-success btn-excel-sync" data-export-type="single" data-app-id="{{ app.id }}" data-app-number="{{ app.app_number }}" title="Export / Update Excel"><i class="bi bi-file-earmark-spreadsheet"></i></a>
+                        {% if current_user.role == 'admin' %}
+                        <form method="POST" action="{{ url_for('applications.archive', app_id=app.id) }}" class="d-inline"
+                              onsubmit="return confirm('Archive this application?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-secondary" title="Archive"><i class="bi bi-archive"></i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="7" class="text-center py-5 text-muted">
+                <i class="bi bi-inbox" style="font-size:2rem;opacity:.4"></i>
+                <p class="mt-2">No applications found. <a href="{{ url_for('applications.new_application') }}">Create one.</a></p>
+            </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

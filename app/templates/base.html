@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Medical Agency{% endblock %} — Drug Licence System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/main.css') }}" rel="stylesheet">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+{% if current_user.is_authenticated %}
+<!-- Sidebar -->
+<div class="sidebar" id="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon"><i class="bi bi-capsule-pill"></i></div>
+        <div class="brand-text">
+            <div class="brand-name">MedLicence</div>
+            <div class="brand-sub">Drug Licence System</div>
+        </div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-section-label">MAIN</div>
+        <a href="{{ url_for('dashboard.index') }}" class="nav-item {% if request.endpoint == 'dashboard.index' %}active{% endif %}">
+            <i class="bi bi-grid-fill"></i><span>Dashboard</span>
+        </a>
+        <a href="{{ url_for('applications.list_applications') }}" class="nav-item {% if request.endpoint and 'applications' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-folder2-open"></i><span>{% if current_user.role == 'admin' %}Applications{% else %}My Applications{% endif %}</span>
+        </a>
+        <a href="{{ url_for('applications.new_application') }}" class="nav-item">
+            <i class="bi bi-plus-circle-fill"></i><span>New Application</span>
+        </a>
+        <div class="nav-section-label">DOCUMENTS</div>
+        <a href="{{ url_for('exports.export_all') }}" class="nav-item btn-excel-sync" id="sidebarExcelSync" data-export-type="all" data-user-id="{{ current_user.id }}" data-user-role="{{ current_user.role }}">
+            <i class="bi bi-file-earmark-spreadsheet"></i>
+            <span class="excel-nav-text">{% if current_user.role == 'admin' %}Export All (Excel){% else %}Export My Data (Excel){% endif %}</span>
+            <span class="badge bg-success ms-auto excel-linked-badge d-none" style="font-size:0.6rem; padding: 2px 5px;" title="Linked to downloaded file">Linked</span>
+        </a>
+        {% if current_user.role == 'admin' %}
+        <div class="nav-section-label">ADMINISTRATION</div>
+        <a href="{{ url_for('admin.users') }}" class="nav-item {% if request.endpoint and 'admin.users' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-clock-history"></i><span>Logged In Users</span>
+        </a>
+        <a href="{{ url_for('admin.audit_logs') }}" class="nav-item {% if request.endpoint and 'admin.audit_logs' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-journal-text"></i><span>Audit Logs</span>
+        </a>
+        {% endif %}
+        <div class="nav-section-label">ACCOUNT</div>
+        <a href="{{ url_for('auth.change_password') }}" class="nav-item {% if request.endpoint and 'auth.change_password' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-key-fill"></i><span>Change Password</span>
+        </a>
+        <a href="{{ url_for('auth.logout') }}" class="nav-item">
+            <i class="bi bi-box-arrow-right"></i><span>Logout</span>
+        </a>
+    </nav>
+    <div class="sidebar-footer d-flex justify-content-between align-items-center">
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi bi-person-circle"></i>
+            <span>{{ current_user.username }}</span>
+        </div>
+        <span class="badge {% if current_user.role == 'admin' %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size:0.65rem;">
+            {{ current_user.role|upper }}
+        </span>
+    </div>
+</div>
+<!-- Main Wrapper -->
+<div class="main-wrapper" id="mainWrapper">
+    <div class="topbar">
+        <button class="sidebar-toggle" id="sidebarToggle"><i class="bi bi-list"></i></button>
+        <div class="topbar-title">{% block page_title %}Dashboard{% endblock %}</div>
+        <div class="topbar-actions">
+            <a href="{{ url_for('applications.new_application') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus-lg"></i> New Application
+            </a>
+        </div>
+    </div>
+    <div class="flash-container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endwith %}
+    </div>
+    <main class="main-content">
+        {% block content %}{% endblock %}
+    </main>
+</div>
+{% else %}
+    {% block auth_content %}{% endblock %}
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+<script src="{{ url_for('static', filename='js/excel_sync.js') }}"></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

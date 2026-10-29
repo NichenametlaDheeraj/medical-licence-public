@@ -1,0 +1,175 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard{% endblock %}
+{% block page_title %}Dashboard{% endblock %}
+{% block content %}
+<!-- Stats Cards -->
+<div class="stats-grid">
+    <div class="stat-card stat-total">
+        <div class="stat-content">
+            <div class="stat-value">{{ total }}</div>
+            <div class="stat-label">{% if current_user.role == 'admin' %}Total Applications{% else %}My Applications{% endif %}</div>
+        </div>
+        <div class="stat-icon"><i class="bi bi-folder2-open"></i></div>
+    </div>
+    <div class="stat-card stat-draft">
+        <div class="stat-content">
+            <div class="stat-value">{{ drafts }}</div>
+            <div class="stat-label">Draft</div>
+        </div>
+        <div class="stat-icon"><i class="bi bi-pencil-square"></i></div>
+    </div>
+    <div class="stat-card stat-ready">
+        <div class="stat-content">
+            <div class="stat-value">{{ ready }}</div>
+            <div class="stat-label">Ready for Review</div>
+        </div>
+        <div class="stat-icon"><i class="bi bi-check-circle"></i></div>
+    </div>
+    <div class="stat-card stat-generated">
+        <div class="stat-content">
+            <div class="stat-value">{{ generated }}</div>
+            <div class="stat-label">Generated Documents</div>
+        </div>
+        <div class="stat-icon"><i class="bi bi-file-earmark-pdf"></i></div>
+    </div>
+</div>
+
+<!-- Search & Filter -->
+<div class="card-glass mb-4">
+    <form method="GET" action="{{ url_for('dashboard.index') }}" class="filter-form">
+        <div class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label">Search</label>
+                <div class="input-group">
+                    <span class="input-group-text"><i class="bi bi-search"></i></span>
+                    <input type="text" name="q" class="form-control" placeholder="Name, app no, mobile..." value="{{ q }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Status</label>
+                <select name="status" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="draft" {% if status_filter=='draft' %}selected{% endif %}>Draft</option>
+                    <option value="in_progress" {% if status_filter=='in_progress' %}selected{% endif %}>In Progress</option>
+                    <option value="ready" {% if status_filter=='ready' %}selected{% endif %}>Ready</option>
+                    <option value="documents_generated" {% if status_filter=='documents_generated' %}selected{% endif %}>Docs Generated</option>
+                    <option value="archived" {% if status_filter=='archived' %}selected{% endif %}>Archived</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Constitution</label>
+                <select name="constitution" class="form-select">
+                    <option value="">All</option>
+                    <option value="proprietorship" {% if constitution_filter=='proprietorship' %}selected{% endif %}>Proprietorship</option>
+                    <option value="partnership" {% if constitution_filter=='partnership' %}selected{% endif %}>Partnership</option>
+                    <option value="llp" {% if constitution_filter=='llp' %}selected{% endif %}>LLP</option>
+                    <option value="private_limited" {% if constitution_filter=='private_limited' %}selected{% endif %}>Pvt. Ltd.</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Licence Type</label>
+                <select name="licence_type" class="form-select">
+                    <option value="">All</option>
+                    <option value="retail" {% if licence_filter=='retail' %}selected{% endif %}>Retail</option>
+                    <option value="wholesale" {% if licence_filter=='wholesale' %}selected{% endif %}>Wholesale</option>
+                    <option value="both" {% if licence_filter=='both' %}selected{% endif %}>Both</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">&nbsp;</label>
+                <div class="d-flex gap-1">
+                    <button type="submit" class="btn btn-primary flex-fill"><i class="bi bi-funnel"></i> Filter</button>
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary"><i class="bi bi-x"></i></a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Applications Table -->
+<div class="card-glass">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="mb-0"><i class="bi bi-table"></i> {% if current_user.role == 'admin' %}Applications{% else %}My Applications{% endif %} <span class="badge bg-navy ms-1">{{ applications|length }}</span></h5>
+        <div class="d-flex gap-2">
+            <a href="{{ url_for('exports.export_all') }}" class="btn btn-outline-success btn-sm btn-excel-sync" id="dashExcelSync" data-export-type="all" data-user-id="{{ current_user.id }}" data-user-role="{{ current_user.role }}">
+                <i class="bi bi-file-earmark-spreadsheet"></i> <span class="excel-dash-text">{% if current_user.role == 'admin' %}Export All{% else %}Export Mine{% endif %}</span>
+            </a>
+            <a href="{{ url_for('applications.new_application') }}" class="btn btn-primary btn-sm">
+                <i class="bi bi-plus"></i> New
+            </a>
+        </div>
+    </div>
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead>
+                <tr>
+                    <th>App Number</th>
+                    <th>Firm Name</th>
+                    <th>Constitution</th>
+                    <th>Licence Type</th>
+                    <th>Status</th>
+                    <th>Date</th>
+                    <th class="text-center">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for app in applications %}
+            <tr>
+                <td><span class="app-number">{{ app.app_number }}</span></td>
+                <td>
+                    {% if app.business_details %}
+                        <strong>{{ app.business_details.firm_name or app.business_details.trading_name or '—' }}</strong>
+                        {% if app.business_details.mobile %}
+                        <br><small class="text-muted"><i class="bi bi-telephone"></i> {{ app.business_details.mobile }}</small>
+                        {% endif %}
+                    {% else %}
+                        <span class="text-muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="badge-constitution badge-{{ app.business_constitution or 'other' }}">
+                        {{ (app.business_constitution or '—')|replace('_',' ')|title }}
+                    </span>
+                </td>
+                <td>{{ (app.licence_type or '—')|title }}</td>
+                <td><span class="status-badge status-{{ app.status }}">{{ (app.status or '')|replace('_',' ')|title }}</span></td>
+                <td><small>{{ app.app_date.strftime('%d/%m/%Y') if app.app_date else '—' }}</small></td>
+                <td>
+                    <div class="btn-group btn-group-sm">
+                        <a href="{{ url_for('applications.view_application', app_id=app.id) }}" class="btn btn-outline-navy" title="View"><i class="bi bi-eye"></i></a>
+                        <a href="{{ url_for('applications.edit_application', app_id=app.id) }}" class="btn btn-outline-warning" title="Edit"><i class="bi bi-pencil"></i></a>
+                        <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger" title="PDF Docs"><i class="bi bi-file-pdf"></i></a>
+                        <a href="{{ url_for('exports.export_single', app_id=app.id) }}" class="btn btn-outline-success btn-excel-sync" data-export-type="single" data-app-id="{{ app.id }}" data-app-number="{{ app.app_number }}" title="Export / Update Excel"><i class="bi bi-file-earmark-spreadsheet"></i></a>
+                        <form method="POST" action="{{ url_for('applications.duplicate_application', app_id=app.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-secondary" title="Duplicate"><i class="bi bi-copy"></i></button>
+                        </form>
+                        {% if current_user.role == 'admin' %}
+                        <form method="POST" action="{{ url_for('applications.archive', app_id=app.id) }}" class="d-inline"
+                              onsubmit="return confirm('Archive this application?')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-warning" title="Archive"><i class="bi bi-archive"></i></button>
+                        </form>
+                        <form method="POST" action="{{ url_for('applications.delete_application', app_id=app.id) }}" class="d-inline"
+                              onsubmit="return confirm('Permanently delete application {{ app.app_number }}? This cannot be undone!')">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <button type="submit" class="btn btn-outline-danger" title="Delete"><i class="bi bi-trash"></i></button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="7" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size:2.5rem;opacity:0.4"></i>
+                    <p class="mt-2 mb-1">No applications found.</p>
+                    <a href="{{ url_for('applications.new_application') }}" class="btn btn-primary btn-sm">Create the first one</a>
+                </td>
+            </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

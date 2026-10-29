@@ -1,0 +1,238 @@
+{% extends 'base.html' %}
+{% block title %}{{ app.app_number }}{% endblock %}
+{% block page_title %}Application: {{ app.app_number }}{% endblock %}
+{% block content %}
+<div class="d-flex gap-2 mb-4 flex-wrap align-items-center">
+    <a href="{{ url_for('applications.edit_application', app_id=app.id) }}" class="btn btn-warning"><i class="bi bi-pencil"></i> Edit</a>
+    <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> Draft.pdf (Preview & Download)</a>
+    <a href="{{ url_for('exports.export_single', app_id=app.id) }}" class="btn btn-outline-success btn-excel-sync" data-export-type="single" data-app-id="{{ app.id }}" data-app-number="{{ app.app_number }}"><i class="bi bi-file-earmark-spreadsheet"></i> Export Excel</a>
+    <form method="POST" action="{{ url_for('applications.duplicate_application', app_id=app.id) }}" class="d-inline">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-outline-secondary"><i class="bi bi-copy"></i> Duplicate</button>
+    </form>
+    {% if current_user.role == 'admin' %}
+        <form method="POST" action="{{ url_for('pdf.generate', app_id=app.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-danger"><i class="bi bi-file-pdf"></i> Generate Draft.pdf</button>
+        </form>
+        {% if app.status != 'ready' %}
+        <form method="POST" action="{{ url_for('applications.approve_application', app_id=app.id) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-success"><i class="bi bi-check-circle"></i> Approve</button>
+        </form>
+        {% endif %}
+        <form method="POST" action="{{ url_for('applications.archive', app_id=app.id) }}" class="d-inline"
+              onsubmit="return confirm('Archive this application?')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-warning"><i class="bi bi-archive"></i> Archive</button>
+        </form>
+        <form method="POST" action="{{ url_for('applications.delete_application', app_id=app.id) }}" class="d-inline"
+              onsubmit="return confirm('Permanently delete application {{ app.app_number }}? This cannot be undone!')">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Delete</button>
+        </form>
+    {% endif %}
+    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary ms-auto"><i class="bi bi-arrow-left"></i> Back</a>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <!-- Application Info -->
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-info-circle"></i> Application Details</h5>
+            <div class="detail-grid">
+                <div class="detail-item"><span class="detail-label">App Number</span><span class="detail-value app-number">{{ app.app_number }}</span></div>
+                <div class="detail-item"><span class="detail-label">Date</span><span class="detail-value">{{ app.app_date.strftime('%d/%m/%Y') if app.app_date else '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Category</span><span class="detail-value">{{ (app.application_category or '—')|replace('_',' ')|title }}</span></div>
+                <div class="detail-item"><span class="detail-label">Licence Type</span><span class="detail-value">{{ (app.licence_type or '—')|title }}</span></div>
+                <div class="detail-item"><span class="detail-label">Licence Forms</span><span class="detail-value">{{ app.licence_forms or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Constitution</span><span class="detail-value">{{ (app.business_constitution or '—')|replace('_',' ')|title }}</span></div>
+                <div class="detail-item"><span class="detail-label">Status</span><span class="detail-value"><span class="status-badge status-{{ app.status }}">{{ (app.status or '')|replace('_',' ')|title }}</span></span></div>
+            </div>
+        </div>
+
+        {% if app.business_details %}{% set bd = app.business_details %}
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-building"></i> Business Details</h5>
+            <div class="detail-grid">
+                <div class="detail-item"><span class="detail-label">Firm Name</span><span class="detail-value">{{ bd.firm_name or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Trading Name</span><span class="detail-value">{{ bd.trading_name or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">PAN</span><span class="detail-value">{{ bd.pan or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Mobile</span><span class="detail-value">{{ bd.mobile or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Email</span><span class="detail-value">{{ bd.email or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">District</span><span class="detail-value">{{ bd.district or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">State</span><span class="detail-value">{{ bd.state or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">PIN</span><span class="detail-value">{{ bd.pincode or '—' }}</span></div>
+            </div>
+            {% if bd.full_address %}<div class="mt-3"><span class="detail-label">Full Address: </span><span class="detail-value">{{ bd.full_address }}</span></div>{% endif %}
+
+            {% if app.business_constitution == 'proprietorship' and bd.proprietor_name %}
+            <h6 class="mt-3 text-navy fw-bold">Proprietor</h6>
+            <div class="detail-grid">
+                <div class="detail-item"><span class="detail-label">Name</span><span class="detail-value">{{ bd.proprietor_name }}</span></div>
+                <div class="detail-item"><span class="detail-label">Father/Husband</span><span class="detail-value">{{ bd.proprietor_father_husband or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">DOB</span><span class="detail-value">{{ bd.proprietor_dob.strftime('%d/%m/%Y') if bd.proprietor_dob else '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">PAN</span><span class="detail-value">{{ bd.proprietor_pan or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Mobile</span><span class="detail-value">{{ bd.proprietor_mobile or '—' }}</span></div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if app.partners %}
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-people"></i> Partners / Members ({{ app.partners|length }})</h5>
+            <div class="table-responsive">
+                <table class="table table-sm table-hover align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Partner Name</th>
+                            <th>Father / Husband</th>
+                            <th>Role</th>
+                            <th>Mobile & Email</th>
+                            <th>PAN & ID Doc</th>
+                            <th>Designated</th>
+                            <th>Auth. Signatory</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in app.partners %}
+                    <tr>
+                        <td><strong>{{ p.partner_number }}</strong></td>
+                        <td>
+                            <div class="fw-bold">{{ p.full_name or '—' }}</div>
+                            {% if p.residential_address %}<small class="text-muted">{{ p.residential_address }}</small>{% endif %}
+                        </td>
+                        <td>{{ p.father_husband_name or '—' }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ p.role or 'Partner' }}</span></td>
+                        <td>
+                            <div>{{ p.mobile or '—' }}</div>
+                            {% if p.email %}<small class="text-muted">{{ p.email }}</small>{% endif %}
+                        </td>
+                        <td>
+                            <div>{{ p.pan or '—' }}</div>
+                            {% if p.id_doc_details %}<small class="text-muted">{{ p.id_doc_details }}</small>{% endif %}
+                        </td>
+                        <td>{% if p.is_designated_partner %}<span class="badge bg-navy">Yes</span>{% else %}<span class="text-muted">No</span>{% endif %}</td>
+                        <td>{% if p.is_authorized_signatory %}<span class="badge bg-success">Yes</span>{% else %}<span class="text-muted">No</span>{% endif %}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if app.pharmacists %}
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-person-badge"></i> Pharmacists ({{ app.pharmacists|length }})</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead><tr><th>Name</th><th>Qualification</th><th>Reg. No.</th><th>Authority</th><th>Validity</th><th>Appt. Date</th></tr></thead>
+                    <tbody>
+                    {% for ph in app.pharmacists %}
+                    <tr>
+                        <td>{{ ph.full_name or '—' }}</td>
+                        <td>{{ ph.qualification or '—' }}</td>
+                        <td>{{ ph.registration_number or '—' }}</td>
+                        <td>{{ ph.registration_authority or '—' }}</td>
+                        <td>{{ ph.registration_validity.strftime('%d/%m/%Y') if ph.registration_validity else '—' }}</td>
+                        <td>{{ ph.appointment_date.strftime('%d/%m/%Y') if ph.appointment_date else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if app.premises %}{% set prem = app.premises %}
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-shop"></i> Premises & Carpet Area</h5>
+            <div class="detail-grid">
+                <div class="detail-item"><span class="detail-label">Shop Name</span><span class="detail-value">{{ prem.shop_name or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Ownership</span><span class="detail-value">{{ (prem.ownership_type or '—')|title }}</span></div>
+                <div class="detail-item">
+                    <span class="detail-label">Carpet Area</span>
+                    <span class="detail-value">
+                        {% if prem.area_sqm %}
+                        <strong>{{ prem.area_sqm }} Sq. Mts</strong> ({{ (prem.area_sqm * 10.7639)|round(1) }} Sq. Ft.)
+                        {% else %}—{% endif %}
+                    </span>
+                </div>
+                <div class="detail-item"><span class="detail-label">Assessment No.</span><span class="detail-value">{{ prem.assessment_number or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Storage</span><span class="detail-value">{{ prem.storage_facilities or '—' }}</span></div>
+            </div>
+            {% if prem.full_address %}<div class="mt-2"><span class="detail-label">Premises Address: </span><span class="detail-value">{{ prem.full_address }}</span></div>{% endif %}
+        </div>
+        {% endif %}
+
+        {% if app.building_owners and app.building_owners|length > 0 and app.building_owners[0].full_name %}
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-house-check"></i> Building Owner / Landlord</h5>
+            {% for bo in app.building_owners %}
+            <div class="detail-grid {% if not loop.last %}mb-3 pb-3{% endif %}" style="{% if not loop.last %}border-bottom:1px solid #f0f0f0{% endif %}">
+                <div class="detail-item"><span class="detail-label">Owner Name</span><span class="detail-value fw-bold">{{ bo.full_name or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Father / Husband</span><span class="detail-value">{{ bo.father_husband_name or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Mobile</span><span class="detail-value">{{ bo.mobile or '—' }}</span></div>
+                <div class="detail-item"><span class="detail-label">Document Proof</span><span class="detail-value">{{ bo.ownership_doc_details or '—' }}</span></div>
+            </div>
+            {% if bo.residential_address %}<div class="mt-2"><span class="detail-label">Owner Residential Address: </span><span class="detail-value">{{ bo.residential_address }}</span></div>{% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-lg-4">
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-lightning"></i> Quick Actions</h5>
+            <div class="d-grid gap-2">
+                {% if current_user.role == 'admin' %}
+                <form method="POST" action="{{ url_for('pdf.generate', app_id=app.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger w-100"><i class="bi bi-file-pdf"></i> Generate Draft.pdf</button>
+                </form>
+                {% endif %}
+                <a href="{{ url_for('applications.edit_application', app_id=app.id) }}" class="btn btn-warning"><i class="bi bi-pencil"></i> Edit Application</a>
+                <a href="{{ url_for('exports.export_single', app_id=app.id) }}" class="btn btn-success btn-excel-sync" data-export-type="single" data-app-id="{{ app.id }}" data-app-number="{{ app.app_number }}"><i class="bi bi-file-earmark-spreadsheet"></i> Export to Excel</a>
+                <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> Preview & Download Draft.pdf</a>
+            </div>
+        </div>
+
+        {% if app.declarations %}
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-check2-square"></i> Declarations</h5>
+            {% set dlabels = {'prev_occupation':'Prev. Occupation','prev_drug_licence':'Prev. Licence','licence_cancelled':'Licence Cancelled','criminal_conviction':'Criminal Conviction','drug_case':'Drug Case','dca_compliance':'D&C Compliance','rules_understood':'Rules Understood'} %}
+            {% for d in app.declarations %}
+            <div class="declaration-item">
+                <span class="decl-q">{{ dlabels.get(d.question_key, d.question_key) }}</span>
+                <span class="badge {% if d.answer == 'yes' %}bg-warning text-dark{% else %}bg-success{% endif %}">{{ (d.answer or '—')|upper }}</span>
+            </div>
+            {% if d.details %}<div class="decl-details ms-0 mb-1">{{ d.details }}</div>{% endif %}
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if current_user.role == 'admin' %}
+        <div class="card-glass mb-4">
+            <h5 class="section-title"><i class="bi bi-clock-history"></i> Audit History</h5>
+            {% for h in app.history[:8] %}
+            <div class="history-item">
+                <span class="history-action badge bg-navy">{{ h.action|title }}</span>
+                <span class="history-desc"> {{ h.description }}</span>
+                <div class="history-time text-muted">
+                    <small>
+                        {{ h.created_at.strftime('%d/%m/%Y %H:%M') if h.created_at else '' }}
+                        {% if h.user %} &bull; by <span class="fw-semibold">{{ h.user.username }}</span>{% endif %}
+                    </small>
+                </div>
+            </div>
+            {% else %}
+            <p class="text-muted" style="font-size:.82rem;">No history yet.</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

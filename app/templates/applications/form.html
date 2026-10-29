@@ -1,0 +1,1068 @@
+{% extends 'base.html' %}
+{% block title %}{{ 'Edit' if app else 'New' }} Application{% endblock %}
+{% block page_title %}{{ 'Edit Application: ' + app.app_number if app else 'New Application' }}{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ── Single-Page Section Layout ── */
+.app-section-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(26,60,110,0.04);
+    margin-bottom: 24px;
+    overflow: hidden;
+    scroll-margin-top: 80px;
+}
+.app-section-header {
+    background: #1a3c6e;
+    color: #ffffff;
+    padding: 12px 20px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+.app-section-header .sec-badge {
+    background: rgba(255,255,255,0.2);
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-weight: 600;
+}
+.app-section-body {
+    padding: 22px;
+}
+/* ── Section Quick Navigation Bar ── */
+.section-nav-bar {
+    position: sticky;
+    top: 65px;
+    z-index: 1020;
+    background: #ffffff;
+    padding: 10px 14px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+    margin-bottom: 24px;
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    border: 1px solid #e2e8f0;
+}
+.sec-nav-pill {
+    white-space: nowrap;
+    padding: 6px 14px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    background: #f1f5f9;
+    border-radius: 20px;
+    text-decoration: none;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.sec-nav-pill:hover, .sec-nav-pill.active {
+    background: #1a3c6e;
+    color: #ffffff;
+}
+/* ── Dynamic blocks (Partner / Pharmacist) ── */
+.partner-block, .pharma-block {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 10px;
+    padding: 18px 16px 14px;
+    margin-bottom: 16px;
+    position: relative;
+    background: #f8fafc;
+    transition: all 0.2s;
+}
+.partner-block:hover, .pharma-block:hover {
+    border-color: #94a3b8;
+    background: #ffffff;
+}
+.block-badge {
+    position: absolute;
+    top: -11px;
+    left: 14px;
+    background: #1a3c6e;
+    color: #fff;
+    padding: 2px 14px;
+    border-radius: 12px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+.btn-block-del {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: #ef4444;
+    cursor: pointer;
+    font-size: 1.1rem;
+    padding: 2px 6px;
+    border-radius: 6px;
+    transition: all 0.15s;
+}
+.btn-block-del:hover {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+/* ── Sticky Action Bar at Bottom ── */
+.sticky-action-bar {
+    position: sticky;
+    bottom: 15px;
+    z-index: 1010;
+    background: #ffffff;
+    padding: 14px 22px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+    border: 1px solid #cbd5e1;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 28px;
+}
+.required-star {
+    color: #dc2626;
+    font-weight: 700;
+}
+.cond-field {
+    background: #fffbeb;
+    border: 1px solid #fde68a;
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 6px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Anchor Navigation Pills (Smooth Scrolling to Sections) -->
+<div class="section-nav-bar shadow-sm">
+    <button type="button" class="sec-nav-pill" onclick="jumpTo('sec-app')">
+        <i class="bi bi-card-list"></i> 1. Application Details
+    </button>
+    <button type="button" class="sec-nav-pill" onclick="jumpTo('sec-business')">
+        <i class="bi bi-building"></i> 2. Business Details
+    </button>
+    <button type="button" class="sec-nav-pill" onclick="jumpTo('sec-constitution')">
+        <i class="bi bi-people-fill"></i> 3. Constitution & Members
+    </button>
+    <button type="button" class="sec-nav-pill" onclick="jumpTo('sec-premises')">
+        <i class="bi bi-shop"></i> 4. Premises & Storage
+    </button>
+    <button type="button" class="sec-nav-pill" onclick="jumpTo('sec-pharmacist')">
+        <i class="bi bi-person-badge"></i> 5. Pharmacist
+    </button>
+    <button type="button" class="sec-nav-pill" onclick="jumpTo('sec-declarations')">
+        <i class="bi bi-check2-square"></i> 6. Declarations
+    </button>
+</div>
+
+<form method="POST"
+      action="{{ url_for('applications.edit_application', app_id=app.id) if app else url_for('applications.new_application') }}"
+      enctype="multipart/form-data" id="appForm" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    {% if app %}<input type="hidden" name="app_id" value="{{ app.id }}">{% endif %}
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         SECTION 1: APPLICATION DETAILS
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="app-section-card" id="sec-app">
+        <div class="app-section-header">
+            <span><i class="bi bi-card-list me-2"></i> Section 1: Application Details</span>
+            <span class="sec-badge">{{ app.app_number if app else 'New Entry' }}</span>
+        </div>
+        <div class="app-section-body">
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Application Number <span class="text-muted">(auto)</span></label>
+                    <input type="text" class="form-control" value="{{ app.app_number if app else 'Auto-generated upon save' }}" readonly style="background:#f8fafc; font-weight:600; color:#1a3c6e;">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Application Date <span class="required-star">*</span></label>
+                    <input type="date" name="app_date" class="form-control" required
+                           value="{{ app.app_date.strftime('%Y-%m-%d') if app and app.app_date else today }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Application Category <span class="required-star">*</span></label>
+                    <select name="application_category" class="form-select" required>
+                        <option value="new_licence" {% if not app or app.application_category=='new_licence' %}selected{% endif %}>New Drug Licence</option>
+                        <option value="renewal" {% if app and app.application_category=='renewal' %}selected{% endif %}>Renewal</option>
+                        <option value="amendment" {% if app and app.application_category=='amendment' %}selected{% endif %}>Amendment</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Licence Type <span class="required-star">*</span></label>
+                    <select name="licence_type" class="form-select" required id="licenceType">
+                        <option value="retail" {% if not app or app.licence_type=='retail' %}selected{% endif %}>Retail</option>
+                        <option value="wholesale" {% if app and app.licence_type=='wholesale' %}selected{% endif %}>Wholesale</option>
+                        <option value="both" {% if app and app.licence_type=='both' %}selected{% endif %}>Both (Retail + Wholesale)</option>
+                    </select>
+                </div>
+                <div class="col-md-8">
+                    <label class="form-label">Applicable Drug Licence Forms</label>
+                    <div id="licenceForms" class="d-flex flex-wrap gap-3 pt-1">
+                        {% set lf = (app.licence_forms or '').split(',') if app and app.licence_forms else ['Form20', 'Form21'] %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="licence_forms" value="Form20" id="lf_Form20" {% if 'Form20' in lf %}checked{% endif %}>
+                            <label class="form-check-label" for="lf_Form20"><strong>Form 20</strong> (Retail General)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="licence_forms" value="Form21" id="lf_Form21" {% if 'Form21' in lf %}checked{% endif %}>
+                            <label class="form-check-label" for="lf_Form21"><strong>Form 21</strong> (Retail Sch C/C1)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="licence_forms" value="Form20B" id="lf_Form20B" {% if 'Form20B' in lf %}checked{% endif %}>
+                            <label class="form-check-label" for="lf_Form20B"><strong>Form 20B</strong> (Wholesale General)</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="licence_forms" value="Form21B" id="lf_Form21B" {% if 'Form21B' in lf %}checked{% endif %}>
+                            <label class="form-check-label" for="lf_Form21B"><strong>Form 21B</strong> (Wholesale Sch C/C1)</label>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select">
+                        <option value="draft" {% if not app or app.status=='draft' %}selected{% endif %}>Draft</option>
+                        <option value="in_progress" {% if app and app.status=='in_progress' %}selected{% endif %}>In Progress</option>
+                        {% if current_user.role == 'admin' %}
+                        <option value="ready" {% if app and app.status=='ready' %}selected{% endif %}>Ready for Review / Approved</option>
+                        <option value="documents_generated" {% if app and app.status=='documents_generated' %}selected{% endif %}>Documents Generated</option>
+                        {% elif app and app.status in ['ready', 'documents_generated'] %}
+                        <option value="{{ app.status }}" selected>{{ app.status|replace('_',' ')|title }} (Locked by Admin)</option>
+                        {% endif %}
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         SECTION 2: BUSINESS INFORMATION
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="app-section-card" id="sec-business">
+        <div class="app-section-header">
+            <span><i class="bi bi-building me-2"></i> Section 2: Business & Firm Details</span>
+        </div>
+        <div class="app-section-body">
+            {% set bd = app.business_details if app and app.business_details else None %}
+            <div class="row g-3">
+                <div class="col-md-5">
+                    <label class="form-label">Firm / Medical Agency Name <span class="required-star">*</span></label>
+                    <input type="text" name="firm_name" class="form-control" required
+                           value="{{ bd.firm_name if bd else '' }}" placeholder="Legal name of the medical agency / firm">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Trading / Shop Display Name</label>
+                    <input type="text" name="trading_name" class="form-control"
+                           value="{{ bd.trading_name if bd else '' }}" placeholder="Name on signboard / shop board">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Business Constitution <span class="required-star">*</span></label>
+                    <select name="business_constitution" class="form-select" required id="constitutionSelect">
+                        <option value="proprietorship" {% if not app or app.business_constitution=='proprietorship' %}selected{% endif %}>Proprietorship</option>
+                        <option value="partnership" {% if app and app.business_constitution=='partnership' %}selected{% endif %}>Partnership Firm</option>
+                        <option value="llp" {% if app and app.business_constitution=='llp' %}selected{% endif %}>LLP</option>
+                        <option value="private_limited" {% if app and app.business_constitution=='private_limited' %}selected{% endif %}>Private Limited Company</option>
+                        <option value="other" {% if app and app.business_constitution=='other' %}selected{% endif %}>Other</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Mobile Number <span class="required-star">*</span></label>
+                    <input type="tel" name="mobile" class="form-control" required maxlength="15"
+                           value="{{ bd.mobile if bd else '' }}" placeholder="10-digit primary mobile">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Email Address</label>
+                    <input type="email" name="email" class="form-control"
+                           value="{{ bd.email if bd else '' }}" placeholder="agency@example.com">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Firm PAN Number</label>
+                    <input type="text" name="pan" class="form-control" maxlength="10"
+                           value="{{ bd.pan if bd else '' }}" placeholder="e.g. ABCDE1234F">
+                </div>
+
+                <div class="col-md-3">
+                    <label class="form-label">Firm Assessment No. (Asst. No.)</label>
+                    <input type="text" name="assessment_number" class="form-control"
+                           value="{{ bd.assessment_number if bd else '' }}" placeholder="e.g. 198635005849">
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Complete Firm / Business Address <span class="required-star">*</span></label>
+                    <textarea name="full_address" class="form-control" rows="2" required
+                              placeholder="Door No, Street/Road, Village/Town">{{ bd.full_address if bd else '' }}</textarea>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">District <span class="required-star">*</span></label>
+                    <input type="text" name="district" class="form-control" required
+                           value="{{ bd.district if bd else '' }}" placeholder="District name">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">PIN Code <span class="required-star">*</span></label>
+                    <input type="text" name="pincode" class="form-control" maxlength="6" required
+                           value="{{ bd.pincode if bd else '' }}" placeholder="6-digit PIN">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         SECTION 3: CONSTITUTION & MEMBER DETAILS
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="app-section-card" id="sec-constitution">
+        <div class="app-section-header">
+            <span><i class="bi bi-people-fill me-2"></i> Section 3: Business Constitution & Member Details</span>
+            <span class="sec-badge" id="constitutionBadge">Proprietorship</span>
+        </div>
+        <div class="app-section-body">
+            {% set bd = app.business_details if app and app.business_details else None %}
+
+            <!-- ── A. Proprietorship Form ── -->
+            <div id="propriSection">
+                <h6 class="text-navy fw-bold mb-3"><i class="bi bi-person-fill"></i> Proprietor Details</h6>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Proprietor Full Name <span class="required-star">*</span></label>
+                        <input type="text" name="proprietor_name" class="form-control"
+                               value="{{ bd.proprietor_name if bd else '' }}" placeholder="Full legal name of proprietor">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Father / Husband Name</label>
+                        <input type="text" name="proprietor_father_husband" class="form-control"
+                               value="{{ bd.proprietor_father_husband if bd else '' }}" placeholder="Father / Husband name">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Mobile Number</label>
+                        <input type="tel" name="proprietor_mobile" class="form-control" maxlength="15"
+                               value="{{ bd.proprietor_mobile if bd else '' }}" placeholder="Mobile number">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">PAN Number</label>
+                        <input type="text" name="proprietor_pan" class="form-control" maxlength="10"
+                               value="{{ bd.proprietor_pan if bd else '' }}" placeholder="PAN Number">
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label">Identity Doc (Aadhaar / Voter ID)</label>
+                        <input type="text" name="proprietor_identity_doc" class="form-control"
+                               value="{{ bd.proprietor_identity_doc if bd else '' }}" placeholder="ID document number">
+                    </div>
+                    <div class="col-12">
+                        <label class="form-label">Residential Address</label>
+                        <textarea name="proprietor_address" class="form-control" rows="2"
+                                  placeholder="Complete residential address of proprietor">{{ bd.proprietor_address if bd else '' }}</textarea>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── B. Partnership Form (Dynamic Member Count) ── -->
+            <div id="partnerSection" style="display:none;">
+                <!-- Member Count Box -->
+                <div class="card p-3 mb-3 border-0" style="background:#eef4fb; border-radius:10px;">
+                    <div class="row align-items-center g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-bold text-navy mb-1" for="numPartnersInput">
+                                <i class="bi bi-people-fill"></i> Number of Partners / Members <span class="required-star">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-white"><i class="bi bi-person-lines-fill text-navy"></i></span>
+                                <input type="number" id="numPartnersInput" name="num_partners" class="form-control"
+                                       min="2" max="20" value="{{ app.partners|length if (app and app.partners) else 2 }}">
+                            </div>
+                            <small class="text-muted">Enter total partners (min 2). Member forms adjust automatically.</small>
+                        </div>
+                        <div class="col-md-6 d-flex justify-content-md-end align-items-end pt-2">
+                            <button type="button" class="btn btn-navy btn-sm" id="addPartnerBtn">
+                                <i class="bi bi-plus-circle"></i> Add Partner
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dynamic Partners Container -->
+                <div id="partnersContainer">
+                {% if app and app.partners %}
+                    {% for p in app.partners %}
+                    <div class="partner-block" data-idx="{{ loop.index }}">
+                        <div class="block-badge">Partner {{ loop.index }}</div>
+                        <button type="button" class="btn-block-del" onclick="removeBlock(this,'partner')" title="Remove Partner">
+                            <i class="bi bi-trash3-fill"></i>
+                        </button>
+                        <input type="hidden" name="partner_id[]" value="{{ p.id }}">
+                        <div class="row g-2 mt-1">
+                            <div class="col-md-5">
+                                <label class="form-label">Full Legal Name <span class="required-star">*</span></label>
+                                <input type="text" name="partner_name[]" class="form-control form-control-sm" value="{{ p.full_name or '' }}" placeholder="Partner name" required>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label">Father / Husband Name</label>
+                                <input type="text" name="partner_father[]" class="form-control form-control-sm" value="{{ p.father_husband_name or '' }}">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Role</label>
+                                <input type="text" name="partner_role[]" class="form-control form-control-sm" value="{{ p.role or 'Partner' }}" placeholder="Managing Partner / Partner">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Mobile</label>
+                                <input type="tel" name="partner_mobile[]" class="form-control form-control-sm" maxlength="15" value="{{ p.mobile or '' }}" placeholder="Mobile">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">PAN</label>
+                                <input type="text" name="partner_pan[]" class="form-control form-control-sm" maxlength="10" value="{{ p.pan or '' }}" placeholder="PAN">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Aadhaar / ID Details</label>
+                                <input type="text" name="partner_id_doc[]" class="form-control form-control-sm" value="{{ p.id_doc_details or '' }}" placeholder="Aadhaar or Voter ID">
+                            </div>
+                            <div class="col-md-8">
+                                <label class="form-label">Residential Address</label>
+                                <input type="text" name="partner_address[]" class="form-control form-control-sm" value="{{ p.residential_address or '' }}" placeholder="Residential address">
+                            </div>
+                            <div class="col-md-2 d-flex align-items-center pt-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="partner_designated[]" value="{{ loop.index }}" id="pd_{{ loop.index }}" {% if p.is_designated_partner %}checked{% endif %}>
+                                    <label class="form-check-label" for="pd_{{ loop.index }}" style="font-size:.78rem;">Designated</label>
+                                </div>
+                            </div>
+                            <div class="col-md-2 d-flex align-items-center pt-3">
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" name="partner_auth_signatory[]" value="{{ loop.index }}" id="pa_{{ loop.index }}" {% if p.is_authorized_signatory %}checked{% endif %}>
+                                    <label class="form-check-label" for="pa_{{ loop.index }}" style="font-size:.78rem;">Auth Signatory</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                {% endif %}
+                </div>
+
+                <!-- Deed details -->
+                <div class="row g-3 mt-2 pt-2 border-top">
+                    <div class="col-md-4">
+                        <label class="form-label">Partnership Deed Date</label>
+                        <input type="date" name="deed_date" class="form-control"
+                               value="{{ bd.deed_date.strftime('%Y-%m-%d') if bd and bd.deed_date else '' }}">
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label">Deed Registration Details</label>
+                        <input type="text" name="deed_reg_details" class="form-control"
+                               value="{{ bd.deed_reg_details if bd else '' }}" placeholder="Registration number / ROF details (optional)">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── C. LLP Details ── -->
+            <div id="llpSection" style="display:none;">
+                <h6 class="text-navy fw-bold mb-3"><i class="bi bi-briefcase"></i> LLP Details</h6>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">LLP Name</label>
+                        <input type="text" name="llp_name" class="form-control" value="{{ bd.llp_name if bd else '' }}"></div>
+                    <div class="col-md-3"><label class="form-label">LLPIN</label>
+                        <input type="text" name="llpin" class="form-control" value="{{ bd.llpin if bd else '' }}"></div>
+                    <div class="col-md-3"><label class="form-label">Authorized Signatory Name</label>
+                        <input type="text" name="llp_auth_signatory" class="form-control" value="{{ bd.llp_auth_signatory if bd else '' }}"></div>
+                    <div class="col-12"><label class="form-label">Registered Office Address</label>
+                        <textarea name="llp_reg_address" class="form-control" rows="2">{{ bd.llp_reg_address if bd else '' }}</textarea></div>
+                </div>
+            </div>
+
+            <!-- ── D. Company Details ── -->
+            <div id="companySection" style="display:none;">
+                <h6 class="text-navy fw-bold mb-3"><i class="bi bi-building-check"></i> Private Limited Company Details</h6>
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">Company Name</label>
+                        <input type="text" name="company_name" class="form-control" value="{{ bd.company_name if bd else '' }}"></div>
+                    <div class="col-md-3"><label class="form-label">CIN</label>
+                        <input type="text" name="cin" class="form-control" value="{{ bd.cin if bd else '' }}"></div>
+                    <div class="col-md-3"><label class="form-label">Authorized Signatory</label>
+                        <input type="text" name="company_auth_signatory" class="form-control" value="{{ bd.company_auth_signatory if bd else '' }}"></div>
+                    <div class="col-12"><label class="form-label">Registered Office Address</label>
+                        <textarea name="company_reg_address" class="form-control" rows="2">{{ bd.company_reg_address if bd else '' }}</textarea></div>
+                </div>
+            </div>
+
+            <!-- ── E. Other ── -->
+            <div id="otherConstitutionSection" style="display:none;">
+                <div class="row g-3">
+                    <div class="col-md-6"><label class="form-label">Constitution Description</label>
+                        <input type="text" name="other_constitution_desc" class="form-control" value="{{ bd.other_constitution_desc if bd else '' }}"></div>
+                    <div class="col-12"><label class="form-label">Details</label>
+                        <textarea name="other_constitution_details" class="form-control" rows="2">{{ bd.other_constitution_details if bd else '' }}</textarea></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         SECTION 4: PREMISES & STORAGE DETAILS
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="app-section-card" id="sec-premises">
+        <div class="app-section-header">
+            <span><i class="bi bi-shop me-2"></i> Section 4: Premises & Storage Details</span>
+            <span class="sec-badge">Premises Particulars</span>
+        </div>
+        <div class="app-section-body">
+            {% set prem = app.premises if app and app.premises else None %}
+
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Ownership Type <span class="required-star">*</span></label>
+                    <select name="ownership_type" class="form-select" id="ownershipType" required>
+                        <option value="owned" {% if not prem or prem.ownership_type=='owned' %}selected{% endif %}>Owned by Applicant</option>
+                        <option value="rented" {% if prem and prem.ownership_type=='rented' %}selected{% endif %}>Rented / Leased</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Shop / Premises Name</label>
+                    <input type="text" name="shop_name" class="form-control"
+                           value="{{ prem.shop_name if prem else '' }}" placeholder="Leave blank if same as Firm Name">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Carpet Area (Sq. Ft.) <span class="required-star">*</span></label>
+                    <div class="input-group">
+                        <input type="number" id="area_sqft_input" name="area_sqft" class="form-control" step="0.1"
+                               value="{{ ((prem.area_sqm * 10.7639)|round(1)) if (prem and prem.area_sqm) else '' }}"
+                               placeholder="e.g. 376.0" oninput="convertSqftToSqm()">
+                        <span class="input-group-text">Sq. Ft.</span>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Carpet Area (Sq. Mts)</label>
+                    <div class="input-group">
+                        <input type="number" id="area_sqm_input" name="area_sqm" class="form-control" step="0.01"
+                               value="{{ prem.area_sqm if prem else '' }}"
+                               placeholder="e.g. 34.92" oninput="convertSqmToSqft()">
+                        <span class="input-group-text">Sq. Mts</span>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Assessment Number (Asst. No.)</label>
+                    <input type="text" name="shop_assessment_number" class="form-control"
+                           value="{{ prem.assessment_number if prem else '' }}" placeholder="e.g. 198635005849">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Door Number & Floor</label>
+                    <input type="text" name="shop_door_number" class="form-control"
+                           value="{{ prem.door_number if prem else '' }}" placeholder="e.g. D. No. 3/262, Ground Floor">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Storage Facilities</label>
+                    <input type="text" name="storage_facilities" class="form-control"
+                           value="{{ prem.storage_facilities if prem else '' }}" placeholder="Refrigerator, Shelves, AC">
+                </div>
+
+                <div class="col-md-8">
+                    <label class="form-label">Complete Firm / Shop Premises Address</label>
+                    <textarea name="shop_address" class="form-control" rows="2"
+                              placeholder="Full premises address (leave blank if same as Complete Firm Address above)">{{ prem.full_address if prem else '' }}</textarea>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Premises Plan (Upload)</label>
+                    <input type="file" name="premises_plan" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         SECTION 5: REGISTERED PHARMACIST(S)
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="app-section-card" id="sec-pharmacist">
+        <div class="app-section-header">
+            <span><i class="bi bi-person-badge me-2"></i> Section 5: Registered Pharmacist(s)</span>
+            <button type="button" class="btn btn-sm btn-light text-navy fw-bold" id="addPharmaBtn">
+                <i class="bi bi-plus-circle"></i> Add Pharmacist
+            </button>
+        </div>
+        <div class="app-section-body">
+            <div id="pharmaContainer">
+            {% if app and app.pharmacists %}
+                {% for ph in app.pharmacists %}
+                <div class="pharma-block" data-idx="{{ loop.index }}">
+                    <div class="block-badge">Pharmacist {{ loop.index }}</div>
+                    <button type="button" class="btn-block-del" onclick="removeBlock(this,'pharma')" title="Remove Pharmacist">
+                        <i class="bi bi-trash3-fill"></i>
+                    </button>
+                    <input type="hidden" name="pharma_id[]" value="{{ ph.id }}">
+                    <div class="row g-2 mt-1">
+                        <div class="col-md-4">
+                            <label class="form-label">Full Name <span class="required-star">*</span></label>
+                            <input type="text" name="pharma_name[]" class="form-control form-control-sm" value="{{ ph.full_name or '' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Father / Husband Name</label>
+                            <input type="text" name="pharma_father[]" class="form-control form-control-sm" value="{{ ph.father_husband_name or '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Qualification</label>
+                            <input type="text" name="pharma_qual[]" class="form-control form-control-sm" value="{{ ph.qualification or 'B.Pharm' }}" placeholder="B.Pharm / D.Pharm">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Pharmacy Council Reg. No. <span class="required-star">*</span></label>
+                            <input type="text" name="pharma_reg_no[]" class="form-control form-control-sm" value="{{ ph.registration_number or '' }}" required>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Registration Valid Until</label>
+                            <input type="date" name="pharma_reg_validity[]" class="form-control form-control-sm"
+                                   value="{{ ph.registration_validity.strftime('%Y-%m-%d') if ph.registration_validity else '' }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Mobile Number</label>
+                            <input type="tel" name="pharma_mobile[]" class="form-control form-control-sm" maxlength="15" value="{{ ph.mobile or '' }}">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Residential Address</label>
+                            <input type="text" name="pharma_address[]" class="form-control form-control-sm" value="{{ ph.residential_address or '' }}" placeholder="Residential address">
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         SECTION 6: STATUTORY DECLARATIONS
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="app-section-card" id="sec-declarations">
+        <div class="app-section-header">
+            <span><i class="bi bi-check2-square me-2"></i> Section 6: Statutory Declarations</span>
+            <span class="sec-badge">Compliance</span>
+        </div>
+        <div class="app-section-body">
+            <p class="text-muted mb-3" style="font-size:.82rem;">
+                Standard legal undertakings under the Drugs and Cosmetics Act & Rules.
+            </p>
+            {% set decl_questions = [
+                ('dca_compliance','Do you undertake to comply strictly with the provisions of the Drugs and Cosmetics Act and Rules?','yes'),
+                ('rules_understood','Have you read and understood the required statutory rules, registers, and responsibilities?','yes'),
+                ('licence_cancelled','Has any drug licence previously held by you or your partners been cancelled or suspended?','no'),
+                ('criminal_conviction','Have you been convicted of any offence under any law in India?','no'),
+                ('drug_case','Are you involved in any pending case under the Drugs and Cosmetics Act or Rules?','no'),
+                ('prev_occupation','Have you been engaged in any other business or occupation conflicting with this licence?','no'),
+                ('prev_drug_licence','Have you held or do you currently hold any other drug licence?','no')
+            ] %}
+            {% set decls = {} %}
+            {% if app and app.declarations %}
+                {% for d in app.declarations %}
+                    {% set _ = decls.update({d.question_key: d}) %}
+                {% endfor %}
+            {% endif %}
+
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <tbody>
+                    {% for key, question, default_ans in decl_questions %}
+                    {% set d = decls.get(key) %}
+                    {% set current_ans = d.answer if d else default_ans %}
+                    <tr class="border-bottom">
+                        <td style="font-size:.84rem; padding:10px 6px;">
+                            {{ loop.index }}. {{ question }}
+                            <div class="cond-field" id="cond_{{ key }}" style="{% if current_ans != 'yes' or key in ['dca_compliance','rules_understood'] %}display:none{% endif %}">
+                                <label style="font-size:.74rem;" class="fw-bold text-muted">Provide Details:</label>
+                                <input type="text" name="decl_details_{{ key }}" class="form-control form-control-sm"
+                                       value="{{ d.details if d else '' }}" placeholder="Enter explanation/details">
+                            </div>
+                        </td>
+                        <td style="width:130px; text-align:right;">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="radio" class="btn-check decl-radio" name="decl_{{ key }}" id="dy_{{ key }}"
+                                       value="yes" data-key="{{ key }}" {% if current_ans == 'yes' %}checked{% endif %}>
+                                <label class="btn btn-outline-success py-1 px-2" for="dy_{{ key }}" style="font-size:.78rem;">Yes</label>
+
+                                <input type="radio" class="btn-check decl-radio" name="decl_{{ key }}" id="dn_{{ key }}"
+                                       value="no" data-key="{{ key }}" {% if current_ans != 'yes' %}checked{% endif %}>
+                                <label class="btn btn-outline-secondary py-1 px-2" for="dn_{{ key }}" style="font-size:.78rem;">No</label>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════════════════════════════════
+         STICKY ACTION BAR (Save / Draft / Cancel)
+         ═════════════════════════════════════════════════════════════════════════ -->
+    <div class="sticky-action-bar">
+        <div>
+            <a href="{{ url_for('applications.list_applications') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-x-circle"></i> Cancel
+            </a>
+        </div>
+        <div class="d-flex gap-2">
+            <button type="submit" name="save_draft" value="1" class="btn btn-outline-navy btn-sm">
+                <i class="bi bi-floppy"></i> Save Draft
+            </button>
+            <button type="submit" class="btn btn-success btn-sm px-4 fw-bold">
+                <i class="bi bi-check-circle-fill"></i> Save Application
+            </button>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const CONSTITUTION = "{{ app.business_constitution if app and app.business_constitution else 'proprietorship' }}";
+
+function jumpTo(id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.scrollIntoView({ behavior: 'smooth' });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+
+  // ── Constitution switcher ──────────────────────────────────────────────
+  const sections = {
+      proprietorship: 'propriSection',
+      partnership: 'partnerSection',
+      llp: 'llpSection',
+      private_limited: 'companySection',
+      other: 'otherConstitutionSection'
+  };
+
+  const badgeLabels = {
+      proprietorship: 'Proprietorship',
+      partnership: 'Partnership Firm',
+      llp: 'LLP',
+      private_limited: 'Private Limited Company',
+      other: 'Other'
+  };
+
+  function switchConstitution(val) {
+      Object.values(sections).forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.style.display = 'none';
+      });
+      const target = sections[val];
+      if (target) {
+          const el = document.getElementById(target);
+          if (el) el.style.display = '';
+      }
+      const badge = document.getElementById('constitutionBadge');
+      if (badge && badgeLabels[val]) {
+          badge.textContent = badgeLabels[val];
+      }
+      if (val === 'partnership') {
+          const pContainer = document.getElementById('partnersContainer');
+          if (pContainer && pContainer.querySelectorAll('.partner-block').length < 2) {
+              const needed = 2 - pContainer.querySelectorAll('.partner-block').length;
+              for (let i = 0; i < needed; i++) {
+                  const count = pContainer.querySelectorAll('.partner-block').length;
+                  pContainer.insertAdjacentHTML('beforeend', newPartnerHTML(count + 1));
+              }
+              if (window.reindexPartners) window.reindexPartners();
+          }
+      }
+  }
+
+  const constSel = document.getElementById('constitutionSelect');
+  if (constSel) {
+      constSel.addEventListener('change', e => switchConstitution(e.target.value));
+      switchConstitution(constSel.value || CONSTITUTION);
+  }
+
+  // ── Real-time Carpet Area Conversion (Sq. Ft. <-> Sq. Mts) ────────────
+  window.convertSqftToSqm = function() {
+      const sqftVal = parseFloat(document.getElementById('area_sqft_input')?.value);
+      const sqmInput = document.getElementById('area_sqm_input');
+      if (sqmInput) {
+          if (!isNaN(sqftVal) && sqftVal > 0) {
+              sqmInput.value = (sqftVal / 10.7639).toFixed(2);
+          } else {
+              sqmInput.value = '';
+          }
+      }
+  };
+
+  window.convertSqmToSqft = function() {
+      const sqmVal = parseFloat(document.getElementById('area_sqm_input')?.value);
+      const sqftInput = document.getElementById('area_sqft_input');
+      if (sqftInput) {
+          if (!isNaN(sqmVal) && sqmVal > 0) {
+              sqmInput.value = (sqmVal * 10.7639).toFixed(1);
+          } else {
+              sqftInput.value = '';
+          }
+      }
+  };
+
+  // ── Licence type → auto-highlight applicable forms ─────────────────────
+  const licenceType = document.getElementById('licenceType');
+  if (licenceType) {
+      licenceType.addEventListener('change', function() {
+          const val = this.value;
+          const f20  = document.getElementById('lf_Form20');
+          const f21  = document.getElementById('lf_Form21');
+          const f20b = document.getElementById('lf_Form20B');
+          const f21b = document.getElementById('lf_Form21B');
+          if (val === 'retail') {
+              if (f20) f20.checked = true;
+              if (f21) f21.checked = true;
+              if (f20b) f20b.checked = false;
+              if (f21b) f21b.checked = false;
+          } else if (val === 'wholesale') {
+              if (f20) f20.checked = false;
+              if (f21) f21.checked = false;
+              if (f20b) f20b.checked = true;
+              if (f21b) f21b.checked = true;
+          } else if (val === 'both') {
+              if (f20) f20.checked = true;
+              if (f21) f21.checked = true;
+              if (f20b) f20b.checked = true;
+              if (f21b) f21b.checked = true;
+          }
+      });
+  }
+
+  // ── Declarations toggle for explanations ───────────────────────────────
+  document.querySelectorAll('.decl-radio').forEach(r => {
+      r.addEventListener('change', function() {
+          const key = this.dataset.key;
+          const cond = document.getElementById('cond_' + key);
+          if (cond) {
+              cond.style.display = (this.value === 'yes' && key !== 'dca_compliance' && key !== 'rules_understood') ? '' : 'none';
+          }
+      });
+  });
+
+  // ── Dynamic Partners Generator & Synchronizer ──────────────────────────
+  const numPartnersInput = document.getElementById('numPartnersInput');
+  const addPartnerBtn = document.getElementById('addPartnerBtn');
+  const partnersContainer = document.getElementById('partnersContainer');
+
+  function newPartnerHTML(idx) {
+      return `<div class="partner-block" data-idx="${idx}">
+          <div class="block-badge">Partner ${idx}</div>
+          <button type="button" class="btn-block-del" onclick="removeBlock(this,'partner')" title="Remove Partner">
+              <i class="bi bi-trash3-fill"></i>
+          </button>
+          <input type="hidden" name="partner_id[]" value="">
+          <div class="row g-2 mt-1">
+              <div class="col-md-5">
+                  <label class="form-label">Full Legal Name <span class="required-star">*</span></label>
+                  <input type="text" name="partner_name[]" class="form-control form-control-sm" placeholder="Full legal name" required>
+              </div>
+              <div class="col-md-4">
+                  <label class="form-label">Father / Husband Name</label>
+                  <input type="text" name="partner_father[]" class="form-control form-control-sm" placeholder="Father / Husband">
+              </div>
+              <div class="col-md-3">
+                  <label class="form-label">Role</label>
+                  <input type="text" name="partner_role[]" class="form-control form-control-sm" value="Partner" placeholder="Managing Partner / Partner">
+              </div>
+              <div class="col-md-3">
+                  <label class="form-label">Mobile</label>
+                  <input type="tel" name="partner_mobile[]" class="form-control form-control-sm" maxlength="15" placeholder="Mobile">
+              </div>
+              <div class="col-md-3">
+                  <label class="form-label">PAN</label>
+                  <input type="text" name="partner_pan[]" class="form-control form-control-sm" maxlength="10" placeholder="PAN Number">
+              </div>
+              <div class="col-md-6">
+                  <label class="form-label">Aadhaar / ID Details</label>
+                  <input type="text" name="partner_id_doc[]" class="form-control form-control-sm" placeholder="Aadhaar or Voter ID number">
+              </div>
+              <div class="col-md-8">
+                  <label class="form-label">Residential Address</label>
+                  <input type="text" name="partner_address[]" class="form-control form-control-sm" placeholder="Complete residential address">
+              </div>
+              <div class="col-md-2 d-flex align-items-center pt-3">
+                  <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="partner_designated[]" value="${idx}" id="pd_${idx}">
+                      <label class="form-check-label" for="pd_${idx}" style="font-size:.78rem;">Designated</label>
+                  </div>
+              </div>
+              <div class="col-md-2 d-flex align-items-center pt-3">
+                  <div class="form-check">
+                      <input class="form-check-input" type="checkbox" name="partner_auth_signatory[]" value="${idx}" id="pa_${idx}">
+                      <label class="form-check-label" for="pa_${idx}" style="font-size:.78rem;">Auth Signatory</label>
+                  </div>
+              </div>
+          </div>
+      </div>`;
+  }
+
+  window.reindexPartners = function() {
+      if (!partnersContainer) return;
+      const blocks = partnersContainer.querySelectorAll('.partner-block');
+      blocks.forEach((b, i) => {
+          const idx = i + 1;
+          b.setAttribute('data-idx', idx);
+          const badge = b.querySelector('.block-badge');
+          if (badge) badge.textContent = `Partner ${idx}`;
+          const pd = b.querySelector('input[name="partner_designated[]"]');
+          if (pd) {
+              pd.id = `pd_${idx}`;
+              pd.value = idx;
+              const lbl = pd.nextElementSibling;
+              if (lbl) lbl.setAttribute('for', `pd_${idx}`);
+          }
+          const pa = b.querySelector('input[name="partner_auth_signatory[]"]');
+          if (pa) {
+              pa.id = `pa_${idx}`;
+              pa.value = idx;
+              const lbl = pa.nextElementSibling;
+              if (lbl) lbl.setAttribute('for', `pa_${idx}`);
+          }
+      });
+      if (numPartnersInput && parseInt(numPartnersInput.value, 10) !== blocks.length) {
+          numPartnersInput.value = blocks.length;
+      }
+  };
+
+  function setPartnerCount(target) {
+      if (!partnersContainer) return;
+      let currentBlocks = partnersContainer.querySelectorAll('.partner-block');
+      let current = currentBlocks.length;
+      if (target > current) {
+          for (let i = current + 1; i <= target; i++) {
+              partnersContainer.insertAdjacentHTML('beforeend', newPartnerHTML(i));
+          }
+      } else if (target < current) {
+          for (let i = current - 1; i >= target; i--) {
+              currentBlocks[i].remove();
+          }
+      }
+      window.reindexPartners();
+  }
+
+  if (numPartnersInput) {
+      numPartnersInput.addEventListener('change', function() {
+          let val = parseInt(this.value, 10);
+          if (isNaN(val) || val < 2) {
+              val = 2;
+              this.value = 2;
+          } else if (val > 20) {
+              val = 20;
+              this.value = 20;
+          }
+          setPartnerCount(val);
+      });
+      numPartnersInput.addEventListener('input', function() {
+          let val = parseInt(this.value, 10);
+          if (!isNaN(val) && val >= 2 && val <= 20) {
+              setPartnerCount(val);
+          }
+      });
+  }
+
+  if (addPartnerBtn) {
+      if (partnersContainer && partnersContainer.querySelectorAll('.partner-block').length === 0) {
+          partnersContainer.innerHTML = newPartnerHTML(1) + newPartnerHTML(2);
+          if (numPartnersInput) numPartnersInput.value = 2;
+          window.reindexPartners();
+      }
+      addPartnerBtn.addEventListener('click', function() {
+          const current = partnersContainer ? partnersContainer.querySelectorAll('.partner-block').length : 0;
+          const target = current + 1;
+          if (numPartnersInput) numPartnersInput.value = target;
+          setPartnerCount(target);
+      });
+  }
+
+  // ── Dynamic Pharmacist Generator ───────────────────────────────────────
+  const addPharmaBtn = document.getElementById('addPharmaBtn');
+  const pharmaContainer = document.getElementById('pharmaContainer');
+
+  function newPharmaHTML(idx) {
+      return `<div class="pharma-block" data-idx="${idx}">
+          <div class="block-badge">Pharmacist ${idx}</div>
+          <button type="button" class="btn-block-del" onclick="removeBlock(this,'pharma')" title="Remove Pharmacist">
+              <i class="bi bi-trash3-fill"></i>
+          </button>
+          <input type="hidden" name="pharma_id[]" value="">
+          <div class="row g-2 mt-1">
+              <div class="col-md-4">
+                  <label class="form-label">Full Name <span class="required-star">*</span></label>
+                  <input type="text" name="pharma_name[]" class="form-control form-control-sm" required>
+              </div>
+              <div class="col-md-4">
+                  <label class="form-label">Father / Husband Name</label>
+                  <input type="text" name="pharma_father[]" class="form-control form-control-sm">
+              </div>
+              <div class="col-md-4">
+                  <label class="form-label">Qualification</label>
+                  <input type="text" name="pharma_qual[]" class="form-control form-control-sm" value="B.Pharm" placeholder="B.Pharm / D.Pharm">
+              </div>
+              <div class="col-md-4">
+                  <label class="form-label">Pharmacy Council Reg. No. <span class="required-star">*</span></label>
+                  <input type="text" name="pharma_reg_no[]" class="form-control form-control-sm" required>
+              </div>
+              <div class="col-md-4">
+                  <label class="form-label">Registration Valid Until</label>
+                  <input type="date" name="pharma_reg_validity[]" class="form-control form-control-sm">
+              </div>
+              <div class="col-md-4">
+                  <label class="form-label">Mobile Number</label>
+                  <input type="tel" name="pharma_mobile[]" class="form-control form-control-sm" maxlength="15">
+              </div>
+              <div class="col-12">
+                  <label class="form-label">Residential Address</label>
+                  <input type="text" name="pharma_address[]" class="form-control form-control-sm" placeholder="Residential address">
+              </div>
+          </div>
+      </div>`;
+  }
+
+  if (addPharmaBtn) {
+      if (pharmaContainer && pharmaContainer.querySelectorAll('.pharma-block').length === 0) {
+          pharmaContainer.innerHTML = newPharmaHTML(1);
+      }
+      addPharmaBtn.addEventListener('click', function() {
+          const current = pharmaContainer ? pharmaContainer.querySelectorAll('.pharma-block').length : 0;
+          pharmaContainer.insertAdjacentHTML('beforeend', newPharmaHTML(current + 1));
+      });
+  }
+});
+
+// ── Global Remove Block Helper ─────────────────────────────────────────────
+function removeBlock(btn, type) {
+    const classMap = { partner: 'partner-block', pharma: 'pharma-block' };
+    const block = btn.closest('.' + classMap[type]);
+    if (!block) return;
+    const container = block.parentElement;
+    const currentCount = container.querySelectorAll('.' + classMap[type]).length;
+
+    if (type === 'partner') {
+        if (currentCount <= 2) {
+            alert('A partnership firm requires at least 2 partners. You cannot remove more partners.');
+            return;
+        }
+    } else {
+        if (currentCount <= 1) {
+            alert('At least one registered pharmacist is required.');
+            return;
+        }
+    }
+
+    block.remove();
+
+    if (type === 'partner') {
+        if (window.reindexPartners) window.reindexPartners();
+    } else {
+        container.querySelectorAll('.' + classMap[type]).forEach((b, i) => {
+            const badge = b.querySelector('.block-badge');
+            if (badge) badge.textContent = `Pharmacist ${i + 1}`;
+        });
+    }
+}
+</script>
+{% endblock %}

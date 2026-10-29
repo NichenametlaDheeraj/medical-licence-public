@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+{% block title %}Login{% endblock %}
+{% block auth_content %}
+<div class="login-page">
+    <div class="login-card">
+        <div class="login-logo">
+            <div class="logo-circle"><i class="bi bi-capsule-pill"></i></div>
+            <h1 class="login-title">MedLicence</h1>
+            <p class="login-subtitle">Drug Licence Automation System</p>
+        </div>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% for category, message in messages %}
+            <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+            {% endfor %}
+        {% endwith %}
+        <form method="POST" action="{{ url_for('auth.login') }}" class="login-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="form-group-custom">
+                <label for="username" class="form-label-custom">Username</label>
+                <div class="input-icon-wrap">
+                    <i class="bi bi-person input-icon"></i>
+                    <input type="text" id="username" name="username" class="form-control-custom"
+                           placeholder="Enter username" required autocomplete="username">
+                </div>
+            </div>
+            <div class="form-group-custom">
+                <label for="password" class="form-label-custom">Password</label>
+                <div class="input-icon-wrap">
+                    <i class="bi bi-lock input-icon"></i>
+                    <input type="password" id="password" name="password" class="form-control-custom has-toggle"
+                           placeholder="Enter password" required autocomplete="current-password">
+                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)" title="Show password" aria-label="Toggle password visibility">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="form-check mb-0">
+                    <input class="form-check-input" type="checkbox" id="remember" name="remember">
+                    <label class="form-check-label" for="remember" style="font-size:0.82rem;">Remember me</label>
+                </div>
+                <a href="{{ url_for('auth.forgot_password') }}" class="text-decoration-none text-muted" style="font-size:0.82rem;">
+                    <i class="bi bi-question-circle me-1"></i>Forgot password?
+                </a>
+            </div>
+            <button type="submit" class="btn-login">Sign In <i class="bi bi-arrow-right"></i></button>
+        </form>
+        <div class="text-center mt-3 pt-2" style="font-size:0.85rem; border-top: 1px solid #e2e8f0;">
+            <span class="text-muted">Don't have an account?</span>
+            <a href="{{ url_for('auth.register') }}" class="fw-bold text-navy text-decoration-none ms-1">
+                <i class="bi bi-person-plus"></i> Create Account
+            </a>
+        </div>
+        <p class="login-footer">Medical Agency Drug Licence Document Automation System</p>
+    </div>
+</div>
+{% endblock %}
