@@ -893,21 +893,27 @@ DOCUMENT_BUILDERS = {
 }
 
 
-def _generate_one(app, doc_type: str, output_dir: str) -> str:
+def build_pdf_bytes(app, doc_type: str = 'complete_dossier') -> tuple:
+    """
+    Generate statutory PDF entirely in memory.
+    Returns (pdf_bytes, filename).
+    Stateless and safe for serverless / ephemeral environments like Vercel.
+    """
+    import io
     styles = _get_styles()
     builder = DOCUMENT_BUILDERS.get(doc_type)
     if not builder:
         raise ValueError(f'Unknown document type: {doc_type}')
 
-    safe_num = (app.app_number or str(app.id)).replace('/', '-')
+    safe_num = (app.app_number or str(app.id or 'Draft')).replace('/', '-')
     if doc_type == 'complete_dossier':
         filename = f'{safe_num}_Draft.pdf'
     else:
         filename = f'{safe_num}_{doc_type}.pdf'
-    filepath = os.path.join(output_dir, filename)
 
+    buf = io.BytesIO()
     doc = SimpleDocTemplate(
-        filepath,
+        buf,
         pagesize=A4,
         leftMargin=1.5 * cm,
         rightMargin=1.5 * cm,
@@ -917,6 +923,17 @@ def _generate_one(app, doc_type: str, output_dir: str) -> str:
 
     elements = builder(app, styles)
     doc.build(elements)
+    pdf_bytes = buf.getvalue()
+    buf.close()
+    return pdf_bytes, filename
+
+
+def _generate_one(app, doc_type: str, output_dir: str) -> str:
+    pdf_bytes, filename = build_pdf_bytes(app, doc_type)
+    os.makedirs(output_dir, exist_ok=True)
+    filepath = os.path.join(output_dir, filename)
+    with open(filepath, 'wb') as f:
+        f.write(pdf_bytes)
     return filename
 
 
@@ -941,7 +958,7 @@ def generate_all_documents(app, user_id: int) -> list:
     for doc_type in doc_types:
         try:
             filename = _generate_one(app, doc_type, app_dir)
-            rel_filename = os.path.join(str(app.id), filename)
+            rel_filename = f"{app.id}/{filename}"
             gd = GeneratedDocument(
                 application_id=app.id,
                 document_type=doc_type,

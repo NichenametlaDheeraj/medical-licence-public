@@ -4,7 +4,8 @@
 {% block content %}
 <div class="d-flex gap-2 mb-4 flex-wrap align-items-center">
     <a href="{{ url_for('applications.edit_application', app_id=app.id) }}" class="btn btn-warning"><i class="bi bi-pencil"></i> Edit</a>
-    <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> Draft.pdf (Preview & Download)</a>
+    <a href="{{ url_for('pdf.download_app_pdf', app_id=app.id) }}" class="btn btn-danger"><i class="bi bi-download"></i> Download Draft.pdf</a>
+    <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> Preview Draft.pdf</a>
     <a href="{{ url_for('exports.export_single', app_id=app.id) }}" class="btn btn-outline-success btn-excel-sync" data-export-type="single" data-app-id="{{ app.id }}" data-app-number="{{ app.app_number }}"><i class="bi bi-file-earmark-spreadsheet"></i> Export Excel</a>
     <form method="POST" action="{{ url_for('applications.duplicate_application', app_id=app.id) }}" class="d-inline">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -188,15 +189,14 @@
         <div class="card-glass mb-4">
             <h5 class="section-title"><i class="bi bi-lightning"></i> Quick Actions</h5>
             <div class="d-grid gap-2">
-                {% if current_user.role == 'admin' %}
-                <form method="POST" action="{{ url_for('pdf.generate', app_id=app.id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger w-100"><i class="bi bi-file-pdf"></i> Generate Draft.pdf</button>
-                </form>
-                {% endif %}
+                <a href="{{ url_for('pdf.download_app_pdf', app_id=app.id) }}" class="btn btn-danger w-100">
+                    <i class="bi bi-download"></i> Download Draft.pdf
+                </a>
+                <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger w-100">
+                    <i class="bi bi-file-earmark-pdf"></i> Preview Draft.pdf
+                </a>
                 <a href="{{ url_for('applications.edit_application', app_id=app.id) }}" class="btn btn-warning"><i class="bi bi-pencil"></i> Edit Application</a>
                 <a href="{{ url_for('exports.export_single', app_id=app.id) }}" class="btn btn-success btn-excel-sync" data-export-type="single" data-app-id="{{ app.id }}" data-app-number="{{ app.app_number }}"><i class="bi bi-file-earmark-spreadsheet"></i> Export to Excel</a>
-                <a href="{{ url_for('pdf.preview', app_id=app.id) }}" class="btn btn-outline-danger"><i class="bi bi-file-earmark-pdf"></i> Preview & Download Draft.pdf</a>
             </div>
         </div>
 

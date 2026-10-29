@@ -7,14 +7,12 @@
         <i class="bi bi-arrow-left"></i> Back to Application
     </a>
     <div class="d-flex gap-2 align-items-center">
-        {% if current_doc and current_doc.status == 'current' %}
-        <a href="{{ url_for('pdf.download', doc_id=current_doc.id) }}" class="btn btn-danger">
+        <a href="{{ url_for('pdf.download_app_pdf', app_id=app.id) }}" class="btn btn-danger">
             <i class="bi bi-download"></i> Download Draft.pdf
         </a>
-        <a href="{{ url_for('pdf.view_pdf', doc_id=current_doc.id) }}" target="_blank" class="btn btn-outline-primary">
+        <a href="{{ url_for('pdf.view_app_pdf', app_id=app.id) }}" target="_blank" class="btn btn-outline-primary">
             <i class="bi bi-box-arrow-up-right"></i> Open in New Tab
         </a>
-        {% endif %}
         <form method="POST" action="{{ url_for('pdf.generate', app_id=app.id) }}" class="d-inline">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <button type="submit" class="btn btn-outline-danger">
@@ -46,14 +44,13 @@
             <div class="alert alert-light border d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3 py-2">
                 <div>
                     <i class="bi bi-check-circle-fill text-success me-1"></i>
-                    <strong>File:</strong> <code>{{ current_doc.filename.split('\\')[-1].split('/')[-1] }}</code>
-                    <span class="text-muted ms-2 small">({{ current_doc.created_at.strftime('%d/%m/%Y %H:%M') if current_doc.created_at else '' }})</span>
+                    <strong>Statutory Dossier:</strong> <code>{{ (app.app_number or 'Draft') ~ '_Draft.pdf' }}</code>
                 </div>
                 <div class="d-flex gap-2">
-                    <a href="{{ url_for('pdf.download', doc_id=current_doc.id) }}" class="btn btn-sm btn-danger">
+                    <a href="{{ url_for('pdf.download_app_pdf', app_id=app.id) }}" class="btn btn-sm btn-danger">
                         <i class="bi bi-download"></i> Download Draft.pdf
                     </a>
-                    <a href="{{ url_for('pdf.view_pdf', doc_id=current_doc.id) }}" target="_blank" class="btn btn-sm btn-outline-primary">
+                    <a href="{{ url_for('pdf.view_app_pdf', app_id=app.id) }}" target="_blank" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-box-arrow-up-right"></i> Full Screen
                     </a>
                 </div>
@@ -61,14 +58,14 @@
 
             <!-- Embedded Live PDF Viewer -->
             <div class="pdf-viewer-box" style="border: 1px solid #ced4da; border-radius: 8px; overflow: hidden; background: #525659;">
-                <iframe src="{{ url_for('pdf.view_pdf', doc_id=current_doc.id) }}" 
+                <iframe src="{{ url_for('pdf.view_app_pdf', app_id=app.id) }}" 
                         width="100%" 
                         height="820px" 
                         style="border: none; display: block;" 
                         title="Draft.pdf Live Preview">
                     <div class="p-4 text-center text-white">
                         <p>Inline PDF preview is not supported on this browser.</p>
-                        <a href="{{ url_for('pdf.download', doc_id=current_doc.id) }}" class="btn btn-danger">
+                        <a href="{{ url_for('pdf.download_app_pdf', app_id=app.id) }}" class="btn btn-danger">
                             <i class="bi bi-download"></i> Click here to Download Draft.pdf
                         </a>
                     </div>
@@ -78,14 +75,16 @@
             {% else %}
             <div class="text-center py-5 text-muted">
                 <i class="bi bi-file-earmark-pdf" style="font-size:3.5rem;opacity:.35"></i>
-                <h6 class="mt-3 mb-2 fw-bold">Draft.pdf is ready to generate</h6>
-                <p class="text-muted small mb-3">Click below to generate the exact 4-page statutory Drug Licensing dossier.</p>
-                <form method="POST" action="{{ url_for('pdf.generate', app_id=app.id) }}">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                    <button type="submit" class="btn btn-danger px-4 py-2">
-                        <i class="bi bi-file-pdf"></i> Generate Draft.pdf Now
-                    </button>
-                </form>
+                <h6 class="mt-3 mb-2 fw-bold">Draft.pdf (Statutory 4-Page Dossier)</h6>
+                <p class="text-muted small mb-3">Download or view the official 4-page statutory Drug Licensing dossier immediately.</p>
+                <div class="d-flex justify-content-center gap-2">
+                    <a href="{{ url_for('pdf.download_app_pdf', app_id=app.id) }}" class="btn btn-danger px-4 py-2">
+                        <i class="bi bi-download"></i> Download Draft.pdf
+                    </a>
+                    <a href="{{ url_for('pdf.view_app_pdf', app_id=app.id) }}" target="_blank" class="btn btn-outline-primary px-4 py-2">
+                        <i class="bi bi-box-arrow-up-right"></i> View Full Screen
+                    </a>
+                </div>
             </div>
             {% endif %}
         </div>
