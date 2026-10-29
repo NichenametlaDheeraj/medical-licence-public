@@ -62,6 +62,17 @@ def create_app(config_name='default'):
             dt = dt.replace(tzinfo=timezone.utc)
         return dt.astimezone().strftime(fmt)
 
+    # Error handlers
+    from flask import render_template
+
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(e):
+        return render_template('404.html'), 500
+
     with app.app_context():
         db.create_all()
         _seed_users(app)

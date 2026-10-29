@@ -18,7 +18,8 @@ exports_bp = Blueprint('exports', __name__)
 def export_single(app_id):
     app_obj = db.session.get(Application, app_id)
     if not app_obj:
-        abort(404)
+        flash(f'Application #{app_id} was not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
     if current_user.role != 'admin' and app_obj.created_by != current_user.id:
         flash('Access denied: You can only export your own applications.', 'danger')
         return redirect(url_for('dashboard.index'))

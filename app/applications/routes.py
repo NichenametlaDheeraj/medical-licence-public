@@ -318,7 +318,8 @@ def new_application():
 def view_application(app_id):
     app_obj = get_application(app_id)
     if not app_obj:
-        abort(404)
+        flash(f'Application #{app_id} was not found. Please select an application from your list.', 'warning')
+        return redirect(url_for('applications.list_applications'))
     if current_user.role != 'admin' and app_obj.created_by != current_user.id:
         flash('Access denied: You can only view your own applications.', 'danger')
         return redirect(url_for('dashboard.index'))
@@ -330,7 +331,8 @@ def view_application(app_id):
 def edit_application(app_id):
     app_obj = get_application(app_id)
     if not app_obj:
-        abort(404)
+        flash(f'Application #{app_id} was not found.', 'warning')
+        return redirect(url_for('applications.list_applications'))
     if current_user.role != 'admin' and app_obj.created_by != current_user.id:
         flash('Access denied: You can only edit your own applications.', 'danger')
         return redirect(url_for('dashboard.index'))
@@ -352,7 +354,8 @@ def edit_application(app_id):
 def archive(app_id):
     app_obj = get_application(app_id)
     if not app_obj:
-        abort(404)
+        flash('Application not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
     archive_application(app_obj, current_user.id)
     flash(f'Application {app_obj.app_number} has been archived.', 'info')
     return redirect(url_for('dashboard.index'))
@@ -363,7 +366,8 @@ def archive(app_id):
 def delete_application(app_id):
     app_obj = get_application(app_id)
     if not app_obj:
-        abort(404)
+        flash('Application not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
     app_num = app_obj.app_number
     db.session.delete(app_obj)
     db.session.commit()
@@ -376,7 +380,8 @@ def delete_application(app_id):
 def approve_application(app_id):
     app_obj = get_application(app_id)
     if not app_obj:
-        abort(404)
+        flash('Application not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
     app_obj.status = 'ready'
     h = ApplicationHistory(
         application_id=app_obj.id,
@@ -395,7 +400,8 @@ def approve_application(app_id):
 def duplicate_application(app_id):
     src = get_application(app_id)
     if not src:
-        abort(404)
+        flash('Application not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
     if current_user.role != 'admin' and src.created_by != current_user.id:
         flash('Access denied: You can only duplicate your own applications.', 'danger')
         return redirect(url_for('dashboard.index'))

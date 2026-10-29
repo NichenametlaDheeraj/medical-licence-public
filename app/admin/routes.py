@@ -67,7 +67,8 @@ def toggle_user_status(user_id):
 
     user = db.session.get(User, user_id)
     if not user:
-        abort(404)
+        flash('User not found.', 'warning')
+        return redirect(url_for('admin.users'))
 
     user.is_active = not user.is_active
     db.session.commit()
@@ -81,7 +82,8 @@ def toggle_user_status(user_id):
 def reset_password(user_id):
     user = db.session.get(User, user_id)
     if not user:
-        abort(404)
+        flash('User not found.', 'warning')
+        return redirect(url_for('admin.users'))
 
     new_password = request.form.get('new_password', '').strip()
     if not new_password or len(new_password) < 6:

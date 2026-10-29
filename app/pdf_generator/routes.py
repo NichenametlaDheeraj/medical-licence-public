@@ -2,6 +2,7 @@
 pdf_generator/routes.py
 Routes for generating, previewing, and downloading PDF documents.
 Supports on-demand in-memory streaming for stateless/serverless environments (Vercel).
+Safe against missing IDs (redirects gracefully instead of raw 404).
 """
 import io
 import os
@@ -21,7 +22,8 @@ pdf_bp = Blueprint('pdf', __name__)
 def generate(app_id):
     app_obj = db.session.get(Application, app_id)
     if not app_obj:
-        abort(404)
+        flash(f'Application #{app_id} was not found.', 'warning')
+        return redirect(url_for('dashboard.index'))
     if current_user.role != 'admin' and app_obj.created_by != current_user.id:
         flash('Access denied: You can only generate documents for your own applications.', 'danger')
         return redirect(url_for('dashboard.index'))
@@ -41,57 +43,79 @@ def generate(app_id):
 @pdf_bp.route('/download/<int:doc_id>')
 @login_required
 def download(doc_id):
+    """Download PDF by document ID or fallback to application ID if doc_id was passed as app_id."""
+    app_obj = None
     doc = db.session.get(GeneratedDocument, doc_id)
-    if not doc:
-        abort(404)
-    if current_user.role != 'admin' and doc.application and doc.application.created_by != current_user.id:
-        abort(403)
-    folder = current_app.config['GENERATED_FOLDER']
-    clean_name = (doc.filename or '').replace('\\', '/')
-    path = os.path.join(folder, *clean_name.split('/')) if clean_name else ''
-    if path and os.path.exists(path):
-        return send_file(path, as_attachment=True, download_name=os.path.basename(path))
-    # On-demand in-memory generation fallback (stateless serverless compatible)
-    if doc.application:
-        try:
-            pdf_bytes, filename = build_pdf_bytes(doc.application, doc.document_type or 'complete_dossier')
-            return send_file(
-                io.BytesIO(pdf_bytes),
-                mimetype='application/pdf',
-                as_attachment=True,
-                download_name=filename
-            )
-        except Exception:
-            current_app.logger.exception('On-demand PDF generation failed in download')
-    abort(404)
+    if doc and doc.application:
+        app_obj = doc.application
+        folder = current_app.config['GENERATED_FOLDER']
+        clean_name = (doc.filename or '').replace('\\', '/')
+        path = os.path.join(folder, *clean_name.split('/')) if clean_name else ''
+        if path and os.path.exists(path):
+            return send_file(path, as_attachment=True, download_name=os.path.basename(path))
+    else:
+        # Fallback: doc_id could be an app_id
+        app_obj = db.session.get(Application, doc_id)
+
+    if not app_obj:
+        flash('The requested document or application could not be found. Please select an application from your dashboard.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
+    if current_user.role != 'admin' and app_obj.created_by != current_user.id:
+        flash('Access denied: You can only download documents for your own applications.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    try:
+        pdf_bytes, filename = build_pdf_bytes(app_obj, 'complete_dossier')
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=filename
+        )
+    except Exception as e:
+        current_app.logger.exception('On-demand PDF generation failed in download')
+        flash(f'Error generating PDF: {str(e)}', 'danger')
+        return redirect(url_for('dashboard.index'))
 
 
 @pdf_bp.route('/view/<int:doc_id>')
 @login_required
 def view_pdf(doc_id):
+    """View PDF by document ID or fallback to application ID if doc_id was passed as app_id."""
+    app_obj = None
     doc = db.session.get(GeneratedDocument, doc_id)
-    if not doc:
-        abort(404)
-    if current_user.role != 'admin' and doc.application and doc.application.created_by != current_user.id:
-        abort(403)
-    folder = current_app.config['GENERATED_FOLDER']
-    clean_name = (doc.filename or '').replace('\\', '/')
-    path = os.path.join(folder, *clean_name.split('/')) if clean_name else ''
-    if path and os.path.exists(path):
-        return send_file(path, as_attachment=False, mimetype='application/pdf')
-    # On-demand in-memory generation fallback (stateless serverless compatible)
-    if doc.application:
-        try:
-            pdf_bytes, filename = build_pdf_bytes(doc.application, doc.document_type or 'complete_dossier')
-            return send_file(
-                io.BytesIO(pdf_bytes),
-                mimetype='application/pdf',
-                as_attachment=False,
-                download_name=filename
-            )
-        except Exception:
-            current_app.logger.exception('On-demand PDF generation failed in view_pdf')
-    abort(404)
+    if doc and doc.application:
+        app_obj = doc.application
+        folder = current_app.config['GENERATED_FOLDER']
+        clean_name = (doc.filename or '').replace('\\', '/')
+        path = os.path.join(folder, *clean_name.split('/')) if clean_name else ''
+        if path and os.path.exists(path):
+            return send_file(path, as_attachment=False, mimetype='application/pdf')
+    else:
+        # Fallback: doc_id could be an app_id
+        app_obj = db.session.get(Application, doc_id)
+
+    if not app_obj:
+        flash('The requested document or application could not be found. Please select an application from your dashboard.', 'warning')
+        return redirect(url_for('dashboard.index'))
+
+    if current_user.role != 'admin' and app_obj.created_by != current_user.id:
+        flash('Access denied: You can only view documents for your own applications.', 'danger')
+        return redirect(url_for('dashboard.index'))
+
+    try:
+        pdf_bytes, filename = build_pdf_bytes(app_obj, 'complete_dossier')
+        return send_file(
+            io.BytesIO(pdf_bytes),
+            mimetype='application/pdf',
+            as_attachment=False,
+            download_name=filename
+        )
+    except Exception as e:
+        current_app.logger.exception('On-demand PDF generation failed in view_pdf')
+        flash(f'Error generating PDF: {str(e)}', 'danger')
+        return redirect(url_for('dashboard.index'))
 
 
 @pdf_bp.route('/app/<int:app_id>/download')
@@ -100,9 +124,11 @@ def download_app_pdf(app_id):
     """Directly stream statutory Draft.pdf download by application ID."""
     app_obj = db.session.get(Application, app_id)
     if not app_obj:
-        abort(404)
+        flash(f'Application #{app_id} was not found. Please select an application from your dashboard.', 'warning')
+        return redirect(url_for('dashboard.index'))
     if current_user.role != 'admin' and app_obj.created_by != current_user.id:
-        abort(403)
+        flash('Access denied: You can only download documents for your own applications.', 'danger')
+        return redirect(url_for('dashboard.index'))
     try:
         pdf_bytes, filename = build_pdf_bytes(app_obj, 'complete_dossier')
         return send_file(
@@ -123,9 +149,11 @@ def view_app_pdf(app_id):
     """Directly stream statutory Draft.pdf inline by application ID."""
     app_obj = db.session.get(Application, app_id)
     if not app_obj:
-        abort(404)
+        flash(f'Application #{app_id} was not found. Please select an application from your dashboard.', 'warning')
+        return redirect(url_for('dashboard.index'))
     if current_user.role != 'admin' and app_obj.created_by != current_user.id:
-        abort(403)
+        flash('Access denied: You can only view documents for your own applications.', 'danger')
+        return redirect(url_for('dashboard.index'))
     try:
         pdf_bytes, filename = build_pdf_bytes(app_obj, 'complete_dossier')
         return send_file(
@@ -136,7 +164,8 @@ def view_app_pdf(app_id):
         )
     except Exception as e:
         current_app.logger.exception('Failed streaming app PDF view')
-        abort(500)
+        flash(f'Failed to view PDF: {str(e)}', 'danger')
+        return redirect(url_for('applications.view_application', app_id=app_id))
 
 
 @pdf_bp.route('/preview/<int:app_id>')
@@ -144,7 +173,8 @@ def view_app_pdf(app_id):
 def preview(app_id):
     app_obj = db.session.get(Application, app_id)
     if not app_obj:
-        abort(404)
+        flash(f'Application #{app_id} was not found. Please select an application from your dashboard.', 'warning')
+        return redirect(url_for('dashboard.index'))
     if current_user.role != 'admin' and app_obj.created_by != current_user.id:
         flash('Access denied: You can only preview documents of your own applications.', 'danger')
         return redirect(url_for('dashboard.index'))
