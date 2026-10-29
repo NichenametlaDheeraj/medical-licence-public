@@ -188,7 +188,7 @@ def _build_data_from_form(form):
         'application_category': form.get('application_category', 'new_licence'),
         'licence_type': form.get('licence_type', 'retail'),
         'licence_forms': ','.join(form.getlist('licence_forms')),
-        'status': form.get('status', 'draft'),
+        'status': form.get('status') or ('draft' if form.get('save_draft') else 'draft'),
         'business_constitution': form.get('business_constitution', ''),
         'app_date': _parse_date(form.get('app_date')) or date.today(),
 
