@@ -48,6 +48,9 @@
         </a>
         {% endif %}
         <div class="nav-section-label">ACCOUNT</div>
+        <a href="{{ url_for('auth.change_username') }}" class="nav-item {% if request.endpoint and 'auth.change_username' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-person-gear"></i><span>Change Username</span>
+        </a>
         <a href="{{ url_for('auth.change_password') }}" class="nav-item {% if request.endpoint and 'auth.change_password' in request.endpoint %}active{% endif %}">
             <i class="bi bi-key-fill"></i><span>Change Password</span>
         </a>

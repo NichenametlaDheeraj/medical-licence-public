@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+{% block title %}Change Username{% endblock %}
+{% block page_title %}Change Username{% endblock %}
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card-glass">
+            <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
+                <div class="logo-circle me-3" style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#1a3c6e,#0284c7);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;">
+                    <i class="bi bi-person-gear"></i>
+                </div>
+                <div>
+                    <h5 class="mb-0 text-navy fw-bold">Update Username</h5>
+                    <small class="text-muted">Current username: <strong>{{ current_user.username }}</strong> ({{ current_user.role|title }})</small>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('auth.change_username') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <!-- Current Username (Readonly) -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Current Username</label>
+                    <div class="input-icon-wrap">
+                        <input type="text" class="form-control bg-light text-muted" value="{{ current_user.username }}" readonly disabled>
+                    </div>
+                </div>
+
+                <!-- New Username -->
+                <div class="mb-3">
+                    <label for="new_username" class="form-label fw-semibold">New Username <span class="text-danger">*</span></label>
+                    <div class="input-icon-wrap">
+                        <input type="text" id="new_username" name="new_username" class="form-control" minlength="3" maxlength="80"
+                               placeholder="Enter new username (min. 3 characters)" required autofocus autocomplete="username">
+                    </div>
+                    <small class="text-muted">Must be at least 3 characters long and unique across all accounts.</small>
+                </div>
+
+                <!-- Current Password to verify -->
+                <div class="mb-4">
+                    <label for="password" class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                    <div class="input-icon-wrap" style="position:relative;">
+                        <input type="password" id="password" name="password" class="form-control"
+                               placeholder="Enter your current password to confirm" required style="padding-right:42px;" autocomplete="current-password">
+                        <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)"
+                                style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:4px 8px;"
+                                title="Toggle visibility" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                    <small class="text-muted">Enter your password to verify your identity before updating username.</small>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary px-4">
+                        <i class="bi bi-check2-circle me-1"></i> Update Username
+                    </button>
+                    <a href="{{ url_for('dashboard.index') }}" class="btn btn-outline-secondary">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

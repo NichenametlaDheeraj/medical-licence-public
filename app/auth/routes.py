@@ -94,6 +94,52 @@ def register():
     return render_template('register.html')
 
 
+@auth_bp.route('/change-username', methods=['GET', 'POST'])
+@login_required
+def change_username():
+    if request.method == 'POST':
+        new_username = request.form.get('new_username', '').strip()
+        password = request.form.get('password', '')
+
+        if not new_username:
+            flash('Please enter a new username.', 'warning')
+            return render_template('change_username.html')
+
+        if len(new_username) < 3:
+            flash('Username must be at least 3 characters long.', 'danger')
+            return render_template('change_username.html')
+
+        if len(new_username) > 80:
+            flash('Username cannot exceed 80 characters.', 'danger')
+            return render_template('change_username.html')
+
+        if new_username.lower() == current_user.username.lower():
+            flash('New username is the same as your current username.', 'info')
+            return render_template('change_username.html')
+
+        # Check if username already exists across other users
+        existing_user = User.query.filter(
+            User.username.ilike(new_username),
+            User.id != current_user.id
+        ).first()
+        if existing_user:
+            flash(f'Username "{new_username}" is already taken. Please choose another.', 'danger')
+            return render_template('change_username.html')
+
+        # Verify current password
+        if not check_password_hash(current_user.password_hash, password):
+            flash('Incorrect password. Please verify your current password to change username.', 'danger')
+            return render_template('change_username.html')
+
+        old_username = current_user.username
+        current_user.username = new_username
+        db.session.commit()
+        flash(f'Your username has been changed successfully from "{old_username}" to "{new_username}"!', 'success')
+        return redirect(url_for('dashboard.index'))
+
+    return render_template('change_username.html')
+
+
 @auth_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():

@@ -576,6 +576,59 @@ class TestMedicalAgencyApp(unittest.TestCase):
         self.assertTrue(admin_status_data['has_exported'])
         self.assertEqual(admin_status_data['download_name'], 'all_applications.xlsx')
 
+    def test_17_user_change_username(self):
+        # 1. Login as user
+        self.client.get('/auth/logout')
+        self.client.post('/auth/login', data={'username': 'user', 'password': 'user123'}, follow_redirects=True)
+
+        # 2. View change username page
+        resp = self.client.get('/auth/change-username')
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b'Update Username', resp.data)
+
+        # 3. Wrong password fails
+        resp_wrong = self.client.post('/auth/change-username', data={
+            'new_username': 'updated_user',
+            'password': 'wrongpassword'
+        }, follow_redirects=True)
+        self.assertIn(b'Incorrect password', resp_wrong.data)
+
+        # 4. Same username shows info notice
+        resp_same = self.client.post('/auth/change-username', data={
+            'new_username': 'user',
+            'password': 'user123'
+        }, follow_redirects=True)
+        self.assertIn(b'same as your current username', resp_same.data)
+
+        # 5. Duplicate existing username (admin) fails
+        resp_dup = self.client.post('/auth/change-username', data={
+            'new_username': 'admin',
+            'password': 'user123'
+        }, follow_redirects=True)
+        self.assertIn(b'already taken', resp_dup.data)
+
+        # 6. Successful username change
+        resp_success = self.client.post('/auth/change-username', data={
+            'new_username': 'renamed_user',
+            'password': 'user123'
+        }, follow_redirects=True)
+        self.assertIn(b'Your username has been changed successfully', resp_success.data)
+
+        # 7. Logout and verify login with new username
+        self.client.get('/auth/logout')
+        login_new = self.client.post('/auth/login', data={
+            'username': 'renamed_user',
+            'password': 'user123'
+        }, follow_redirects=True)
+        self.assertEqual(login_new.status_code, 200)
+        self.assertIn(b'Welcome back, renamed_user', login_new.data)
+
+        # 8. Restore original username
+        self.client.post('/auth/change-username', data={
+            'new_username': 'user',
+            'password': 'user123'
+        }, follow_redirects=True)
+
 
 if __name__ == '__main__':
     unittest.main()
