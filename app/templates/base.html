@@ -48,11 +48,8 @@
         </a>
         {% if current_user.role == 'admin' %}
         <div class="nav-section-label">ADMINISTRATION</div>
-        <a href="{{ url_for('admin.users') }}" class="nav-item {% if request.endpoint and 'admin.users' in request.endpoint %}active{% endif %}">
-            <i class="bi bi-clock-history"></i><span>Logged In Users</span>
-        </a>
-        <a href="{{ url_for('admin.audit_logs') }}" class="nav-item {% if request.endpoint and 'admin.audit_logs' in request.endpoint %}active{% endif %}">
-            <i class="bi bi-journal-text"></i><span>Audit Logs</span>
+        <a href="{{ url_for('admin.users_and_logs') }}" class="nav-item {% if request.endpoint and 'admin.' in request.endpoint %}active{% endif %}">
+            <i class="bi bi-clock-history"></i><span>Logged In Users & Audit Logs</span>
         </a>
         {% endif %}
         <div class="nav-section-label">ACCOUNT</div>

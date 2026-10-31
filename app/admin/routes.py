@@ -17,93 +17,15 @@ from app.models.attachment import Attachment
 admin_bp = Blueprint('admin', __name__, url_prefix='/admin')
 
 
-@admin_bp.route('/users', methods=['GET'])
-@admin_required
-def users():
-    # Show only users who have logged in, ordered by most recent login
-    user_list = User.query.filter(User.last_login.isnot(None)).order_by(User.last_login.desc()).all()
-    return render_template('admin/users.html', users=user_list)
-
-
-@admin_bp.route('/users/create', methods=['POST'])
-@admin_required
-def create_user():
-    username = request.form.get('username', '').strip()
-    email = request.form.get('email', '').strip()
-    password = request.form.get('password', '')
-    role = request.form.get('role', 'user')
-
-    if not username or not email or not password:
-        flash('Username, email, and password are required.', 'danger')
-        return redirect(url_for('admin.users'))
-
-    if User.query.filter_by(username=username).first():
-        flash(f'Username "{username}" already exists.', 'danger')
-        return redirect(url_for('admin.users'))
-
-    if User.query.filter_by(email=email).first():
-        flash(f'Email "{email}" already registered.', 'danger')
-        return redirect(url_for('admin.users'))
-
-    new_user = User(
-        username=username,
-        email=email,
-        password_hash=generate_password_hash(password),
-        role=role if role in ('admin', 'user') else 'user',
-        is_active=True,
-    )
-    db.session.add(new_user)
-    db.session.commit()
-    flash(f'User "{username}" created successfully with role "{new_user.role}".', 'success')
-    return redirect(url_for('admin.users'))
-
-
-@admin_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
-@admin_required
-def toggle_user_status(user_id):
-    if user_id == current_user.id:
-        flash('You cannot deactivate your own account.', 'warning')
-        return redirect(url_for('admin.users'))
-
-    user = db.session.get(User, user_id)
-    if not user:
-        flash('User not found.', 'warning')
-        return redirect(url_for('admin.users'))
-
-    user.is_active = not user.is_active
-    db.session.commit()
-    status_str = 'activated' if user.is_active else 'deactivated'
-    flash(f'User "{user.username}" has been {status_str}.', 'info')
-    return redirect(url_for('admin.users'))
-
-
-@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
-@admin_required
-def reset_password(user_id):
-    user = db.session.get(User, user_id)
-    if not user:
-        flash('User not found.', 'warning')
-        return redirect(url_for('admin.users'))
-
-    new_password = request.form.get('new_password', '').strip()
-    if not new_password or len(new_password) < 6:
-        flash('New password must be at least 6 characters long.', 'danger')
-        return redirect(url_for('admin.users'))
-
-    user.password_hash = generate_password_hash(new_password)
-    db.session.commit()
-    flash(f'Password for "{user.username}" updated successfully.', 'success')
-    return redirect(url_for('admin.users'))
-
-
-@admin_bp.route('/audit-logs', methods=['GET'])
-@admin_required
-def audit_logs():
+def _render_users_and_logs():
+    """Helper to render unified Logged In Users and Audit Logs console."""
     q = request.args.get('q', '').strip()
     action = request.args.get('action', '').strip()
 
-    query = ApplicationHistory.query.join(Application)
+    # Show only users who have logged in, ordered by most recent login
+    user_list = User.query.filter(User.last_login.isnot(None)).order_by(User.last_login.desc()).all()
 
+    query = ApplicationHistory.query.join(Application)
     if q:
         query = query.filter(
             (Application.app_number.ilike(f'%{q}%')) |
@@ -116,5 +38,101 @@ def audit_logs():
     actions = db.session.query(ApplicationHistory.action).distinct().all()
     distinct_actions = [a[0] for a in actions if a[0]]
 
-    return render_template('admin/audit_logs.html', logs=logs, q=q,
-                           current_action=action, distinct_actions=distinct_actions)
+    return render_template('admin/users_and_logs.html',
+                           users=user_list,
+                           logs=logs,
+                           q=q,
+                           current_action=action,
+                           distinct_actions=distinct_actions)
+
+
+@admin_bp.route('/users-and-logs', methods=['GET'])
+@admin_required
+def users_and_logs():
+    """Unified single-page view combining Logged In Users and Audit Logs."""
+    return _render_users_and_logs()
+
+
+@admin_bp.route('/users', methods=['GET'])
+@admin_required
+def users():
+    """Backwards-compatible route for users endpoint."""
+    return _render_users_and_logs()
+
+
+@admin_bp.route('/audit-logs', methods=['GET'])
+@admin_required
+def audit_logs():
+    """Backwards-compatible route for audit logs endpoint."""
+    return _render_users_and_logs()
+
+
+@admin_bp.route('/users/create', methods=['POST'])
+@admin_required
+def create_user():
+    username = request.form.get('username', '').strip()
+    email = request.form.get('email', '').strip()
+    password = request.form.get('password', '')
+    role = request.form.get('role', 'user')
+
+    if not username or not email or not password:
+        flash('Username, email, and password are required.', 'danger')
+        return redirect(url_for('admin.users_and_logs'))
+
+    if User.query.filter_by(username=username).first():
+        flash(f'Username "{username}" already exists.', 'danger')
+        return redirect(url_for('admin.users_and_logs'))
+
+    if User.query.filter_by(email=email).first():
+        flash(f'Email "{email}" already registered.', 'danger')
+        return redirect(url_for('admin.users_and_logs'))
+
+    new_user = User(
+        username=username,
+        email=email,
+        password_hash=generate_password_hash(password),
+        role=role if role in ('admin', 'user') else 'user',
+        is_active=True,
+    )
+    db.session.add(new_user)
+    db.session.commit()
+    flash(f'User "{username}" created successfully with role "{new_user.role}".', 'success')
+    return redirect(url_for('admin.users_and_logs'))
+
+
+@admin_bp.route('/users/<int:user_id>/toggle-status', methods=['POST'])
+@admin_required
+def toggle_user_status(user_id):
+    if user_id == current_user.id:
+        flash('You cannot deactivate your own account.', 'warning')
+        return redirect(url_for('admin.users_and_logs'))
+
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('User not found.', 'warning')
+        return redirect(url_for('admin.users_and_logs'))
+
+    user.is_active = not user.is_active
+    db.session.commit()
+    status_str = 'activated' if user.is_active else 'deactivated'
+    flash(f'User "{user.username}" has been {status_str}.', 'info')
+    return redirect(url_for('admin.users_and_logs'))
+
+
+@admin_bp.route('/users/<int:user_id>/reset-password', methods=['POST'])
+@admin_required
+def reset_password(user_id):
+    user = db.session.get(User, user_id)
+    if not user:
+        flash('User not found.', 'warning')
+        return redirect(url_for('admin.users_and_logs'))
+
+    new_password = request.form.get('new_password', '').strip()
+    if not new_password or len(new_password) < 6:
+        flash('New password must be at least 6 characters long.', 'danger')
+        return redirect(url_for('admin.users_and_logs'))
+
+    user.password_hash = generate_password_hash(new_password)
+    db.session.commit()
+    flash(f'Password for "{user.username}" updated successfully.', 'success')
+    return redirect(url_for('admin.users_and_logs'))
