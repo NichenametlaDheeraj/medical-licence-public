@@ -48,11 +48,6 @@ def download(doc_id):
     doc = db.session.get(GeneratedDocument, doc_id)
     if doc and doc.application:
         app_obj = doc.application
-        folder = current_app.config['GENERATED_FOLDER']
-        clean_name = (doc.filename or '').replace('\\', '/')
-        path = os.path.join(folder, *clean_name.split('/')) if clean_name else ''
-        if path and os.path.exists(path):
-            return send_file(path, as_attachment=True, download_name=os.path.basename(path))
     else:
         # Fallback: doc_id could be an app_id
         app_obj = db.session.get(Application, doc_id)
@@ -87,11 +82,6 @@ def view_pdf(doc_id):
     doc = db.session.get(GeneratedDocument, doc_id)
     if doc and doc.application:
         app_obj = doc.application
-        folder = current_app.config['GENERATED_FOLDER']
-        clean_name = (doc.filename or '').replace('\\', '/')
-        path = os.path.join(folder, *clean_name.split('/')) if clean_name else ''
-        if path and os.path.exists(path):
-            return send_file(path, as_attachment=False, mimetype='application/pdf')
     else:
         # Fallback: doc_id could be an app_id
         app_obj = db.session.get(Application, doc_id)

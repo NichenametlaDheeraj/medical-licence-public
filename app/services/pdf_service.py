@@ -14,7 +14,7 @@ Includes:
 import os
 from io import BytesIO
 from datetime import datetime, timezone, date
-from PIL import Image as PILImage
+from PIL import Image as PILImage, ImageOps
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -264,8 +264,11 @@ def _get_premises_info(app):
         if pincode: parts.append(f"PIN - {pincode}")
         full_addr = ', '.join(parts) if parts else 'Premises Address'
 
+    ownership = (prem.ownership_type if prem and prem.ownership_type else (bd.ownership_type if bd and hasattr(bd, 'ownership_type') else 'owned') or 'owned').strip()
+
     return {
         'full_address': full_addr,
+        'ownership': ownership,
         'area_sqm': area_sqm_str,
         'area_sqft': area_sqft_str,
         'district': district,
@@ -430,49 +433,79 @@ def _format_to_block(district='Kadapa', state='Andhra Pradesh'):
     )
 
 
+def _read_disk_attachment(app, att):
+    """Attempt to read attachment binary data from disk candidates."""
+    if not att or not getattr(att, 'stored_filename', None):
+        return None
+    candidates = []
+    try:
+        from flask import current_app
+        if current_app and current_app.config.get('UPLOAD_FOLDER'):
+            upload_folder = current_app.config['UPLOAD_FOLDER']
+            candidates.append(os.path.join(upload_folder, att.stored_filename))
+            candidates.append(os.path.join(upload_folder, str(getattr(app, 'id', '')), os.path.basename(att.stored_filename)))
+    except Exception:
+        pass
+    candidates.append(os.path.join('uploads', att.stored_filename))
+    candidates.append(os.path.join('uploads', str(getattr(app, 'id', '')), os.path.basename(att.stored_filename)))
+    candidates.append(att.stored_filename)
+
+    for cp in candidates:
+        if os.path.isfile(cp):
+            try:
+                with open(cp, 'rb') as f:
+                    data = f.read()
+                    if data:
+                        return data
+            except Exception:
+                pass
+    return None
+
+
 def _find_image_bytes(app, candidate_doc_types):
     """
     Search attachments for candidate_doc_types in order.
     Returns bytes of the image, or None if not found or cannot be read.
+    Checks in-memory relationship first, then queries the database directly.
     """
-    if not getattr(app, 'attachments', None):
+    if not app:
         return None
-    for doc_type in candidate_doc_types:
-        for att in reversed(app.attachments):
-            if att.document_type == doc_type:
-                # 1. Try database BLOB first if available (fastest and reliable across serverless lambdas)
-                if getattr(att, 'file_data', None):
-                    return bytes(att.file_data)
-                # 2. Try reading from filesystem if file exists
-                if getattr(att, 'stored_filename', None):
-                    candidates = []
-                    try:
-                        from flask import current_app
-                        if current_app and current_app.config.get('UPLOAD_FOLDER'):
-                            upload_folder = current_app.config['UPLOAD_FOLDER']
-                            candidates.append(os.path.join(upload_folder, att.stored_filename))
-                            candidates.append(os.path.join(upload_folder, str(app.id), os.path.basename(att.stored_filename)))
-                    except Exception:
-                        pass
-                    candidates.append(os.path.join('uploads', att.stored_filename))
-                    candidates.append(os.path.join('uploads', str(app.id), os.path.basename(att.stored_filename)))
-                    candidates.append(att.stored_filename)
 
-                    for cp in candidates:
-                        if os.path.isfile(cp):
-                            try:
-                                with open(cp, 'rb') as f:
-                                    data = f.read()
-                                    if data:
-                                        return data
-                            except Exception:
-                                pass
+    # 1. Check in-memory attachments relationship if present
+    atts = getattr(app, 'attachments', None)
+    if atts:
+        for doc_type in candidate_doc_types:
+            for att in reversed(atts):
+                if att.document_type == doc_type:
+                    if getattr(att, 'file_data', None):
+                        return bytes(att.file_data)
+                    data = _read_disk_attachment(app, att)
+                    if data:
+                        return data
+
+    # 2. Query DB directly to catch any freshly committed attachments across requests
+    app_id = getattr(app, 'id', None)
+    if app_id:
+        try:
+            from app.models.attachment import Attachment
+            for doc_type in candidate_doc_types:
+                att = Attachment.query.filter_by(application_id=app_id, document_type=doc_type).order_by(Attachment.id.desc()).first()
+                if att:
+                    if getattr(att, 'file_data', None):
+                        return bytes(att.file_data)
+                    data = _read_disk_attachment(app, att)
+                    if data:
+                        return data
+        except Exception:
+            pass
+
     return None
 
 
 def _create_fitted_image(img_bytes, max_w, max_h):
     """
     Given image bytes, return a ReportLab Image scaled proportionally to fit within (max_w, max_h).
+    Normalizes phone camera EXIF rotation and converts to clean PNG bytes for ReportLab.
     Returns None if bytes are invalid or cannot be opened.
     """
     if not img_bytes:
@@ -480,14 +513,23 @@ def _create_fitted_image(img_bytes, max_w, max_h):
     try:
         bio = BytesIO(img_bytes)
         pil_img = PILImage.open(bio)
+        try:
+            pil_img = ImageOps.exif_transpose(pil_img)
+        except Exception:
+            pass
+        if pil_img.mode not in ('RGB', 'RGBA', 'L'):
+            pil_img = pil_img.convert('RGB')
         orig_w, orig_h = pil_img.size
         if orig_w <= 0 or orig_h <= 0:
             return None
         ratio = min(max_w / orig_w, max_h / orig_h)
         draw_w = orig_w * ratio
         draw_h = orig_h * ratio
-        bio.seek(0)
-        img = RLImage(bio, width=draw_w, height=draw_h)
+
+        clean_bio = BytesIO()
+        pil_img.save(clean_bio, format='PNG')
+        clean_bio.seek(0)
+        img = RLImage(clean_bio, width=draw_w, height=draw_h)
         img.hAlign = 'CENTER'
         return img
     except Exception:
@@ -687,10 +729,9 @@ def _build_building_owner_declaration(app, styles):
     elements.append(Spacer(1, 20))
 
     # 4. Attestation Photo Box & Signature
-    bo_photo_bytes = _find_image_bytes(app, ['building_owner_photo'])
-    if not bo_photo_bytes and (premises.get('ownership') == 'owned' or premises.get('ownership') == 'Owned by Applicant'):
-        bo_photo_bytes = _find_image_bytes(app, ['proprietor_photo'])
-
+    bo_photo_bytes = _find_image_bytes(app, [
+        'building_owner_photo', 'bo_photo', 'proprietor_photo', 'applicant_photo', 'pharmacist_photo'
+    ])
     bo_img = _create_fitted_image(bo_photo_bytes, max_w=3.3 * cm, max_h=4.1 * cm) if bo_photo_bytes else None
 
     if bo_img:
@@ -727,10 +768,9 @@ def _build_building_owner_declaration(app, styles):
         '(Signature also to be Attested by Gazetted Officer)'
     )
 
-    bo_sig_bytes = _find_image_bytes(app, ['building_owner_signature'])
-    if not bo_sig_bytes and (premises.get('ownership') == 'owned' or premises.get('ownership') == 'Owned by Applicant'):
-        bo_sig_bytes = _find_image_bytes(app, ['proprietor_signature'])
-
+    bo_sig_bytes = _find_image_bytes(app, [
+        'building_owner_signature', 'bo_signature', 'proprietor_signature', 'applicant_signature', 'pharmacist_signature'
+    ])
     sig_img = _create_fitted_image(bo_sig_bytes, max_w=5.5 * cm, max_h=1.8 * cm) if bo_sig_bytes else None
 
     if sig_img:
@@ -765,7 +805,9 @@ def _build_pharmacist_declaration(app, styles):
     elements = []
 
     # 1. Header with Photo Box (Unified Header Table)
-    pharma_photo_bytes = _find_image_bytes(app, ['pharmacist_photo', 'proprietor_photo'])
+    pharma_photo_bytes = _find_image_bytes(app, [
+        'pharmacist_photo', 'pharma_photo', 'proprietor_photo', 'applicant_photo', 'building_owner_photo'
+    ])
     pharma_img = _create_fitted_image(pharma_photo_bytes, max_w=3.1 * cm, max_h=3.3 * cm) if pharma_photo_bytes else None
 
     if pharma_img:
