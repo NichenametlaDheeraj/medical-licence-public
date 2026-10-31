@@ -557,6 +557,59 @@
                 <div class="col-md-4">
                     <label class="form-label">Premises Plan (Upload)</label>
                     <input type="file" name="premises_plan" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                    {% if app and app.get_attachment('premises_plan') %}
+                    <small class="text-success d-block mt-1"><i class="bi bi-check-circle"></i> Plan attached: {{ app.get_attachment('premises_plan').original_filename }}</small>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Building Owner Details & Uploads -->
+            <hr class="my-4 text-muted">
+            {% set bo = app.building_owners[0] if (app and app.building_owners and app.building_owners|length > 0) else None %}
+            <input type="hidden" name="bo_id[]" value="{{ bo.id if bo else '' }}">
+
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Building Owner Full Name</label>
+                    <input type="text" name="bo_name[]" id="bo_name_input" class="form-control"
+                           value="{{ bo.full_name if bo else '' }}" placeholder="Name of building owner">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Owner Father / Husband Name</label>
+                    <input type="text" name="bo_father[]" id="bo_father_input" class="form-control"
+                           value="{{ bo.father_husband_name if bo else '' }}" placeholder="Father or Husband name">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label">Owner Mobile Number</label>
+                    <input type="tel" name="bo_mobile[]" id="bo_mobile_input" class="form-control" maxlength="15"
+                           value="{{ bo.mobile if bo else '' }}" placeholder="Mobile number">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Owner Residential Address</label>
+                    <input type="text" name="bo_address[]" id="bo_address_input" class="form-control"
+                           value="{{ bo.residential_address if bo else '' }}" placeholder="Permanent address of owner">
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label">Ownership Document Details</label>
+                    <input type="text" name="bo_ownership_doc[]" id="bo_doc_input" class="form-control"
+                           value="{{ bo.ownership_doc_details if bo else 'Sale Deed / Property Tax Receipt / Registered Rental Agreement' }}"
+                           placeholder="Sale Deed / Property Tax Receipt / Rental Agreement">
+                </div>
+
+                <!-- Building Owner Passport Size Photo & Digital Signature beside that -->
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Building Owner Passport Size Photo</label>
+                    <input type="file" name="building_owner_photo" class="form-control" accept=".jpg,.jpeg,.png">
+                    {% if app and app.get_attachment('building_owner_photo') %}
+                    <small class="text-success d-block mt-1"><i class="bi bi-check-circle-fill"></i> Uploaded: {{ app.get_attachment('building_owner_photo').original_filename }}</small>
+                    {% endif %}
+                </div>
+                <div class="col-md-6">
+                    <label class="form-label fw-bold">Digital Signature</label>
+                    <input type="file" name="building_owner_signature" class="form-control" accept=".jpg,.jpeg,.png">
+                    {% if app and app.get_attachment('building_owner_signature') %}
+                    <small class="text-success d-block mt-1"><i class="bi bi-check-circle-fill"></i> Uploaded: {{ app.get_attachment('building_owner_signature').original_filename }}</small>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -1049,6 +1102,75 @@ function removeBlock(btn, type) {
             const badge = b.querySelector('.block-badge');
             if (badge) badge.textContent = `Pharmacist ${i + 1}`;
         });
+    }
+}
+
+// ── Passport Photo Live Preview & Clear Helpers ───────────────────────────
+function previewPassportPhoto(input, imgId, placeholderId, statusId) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = document.getElementById(imgId);
+            const placeholder = document.getElementById(placeholderId);
+            const status = document.getElementById(statusId);
+            if (img) {
+                img.src = e.target.result;
+                img.style.display = 'block';
+            }
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+            if (status) {
+                status.innerHTML = `<span class="text-primary fw-semibold"><i class="bi bi-image"></i> Selected: ${file.name} (${(file.size / 1024).toFixed(1)} KB)</span>`;
+            }
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function clearPassportPhoto(inputId, imgId, placeholderId, statusId, origUrl) {
+    const input = document.getElementById(inputId);
+    const img = document.getElementById(imgId);
+    const placeholder = document.getElementById(placeholderId);
+    const status = document.getElementById(statusId);
+    if (input) input.value = '';
+    if (origUrl && origUrl.trim() !== '') {
+        if (img) {
+            img.src = origUrl;
+            img.style.display = 'block';
+        }
+        if (placeholder) placeholder.style.display = 'none';
+        if (status) status.innerHTML = `<span class="text-success fw-semibold"><i class="bi bi-check-circle-fill"></i> Original uploaded photo restored</span>`;
+    } else {
+        if (img) {
+            img.src = '';
+            img.style.display = 'none';
+        }
+        if (placeholder) placeholder.style.display = 'block';
+        if (status) status.innerHTML = `<span class="text-muted"><i class="bi bi-info-circle"></i> Photo selection cleared</span>`;
+    }
+}
+
+// ── Autofill Building Owner from Applicant Details ─────────────────────────
+function autofillBuildingOwner() {
+    const propName = document.querySelector('input[name="proprietor_name"]')?.value || '';
+    const propFather = document.querySelector('input[name="proprietor_father"]')?.value || '';
+    const propMobile = document.querySelector('input[name="proprietor_mobile"]')?.value || '';
+    const propAddr = document.querySelector('textarea[name="proprietor_residential_address"]')?.value || '';
+
+    const boNameInput = document.getElementById('bo_name_input');
+    const boFatherInput = document.getElementById('bo_father_input');
+    const boMobileInput = document.getElementById('bo_mobile_input');
+    const boAddrInput = document.getElementById('bo_address_input');
+    const boDocInput = document.getElementById('bo_doc_input');
+
+    if (boNameInput && propName) boNameInput.value = propName;
+    if (boFatherInput && propFather) boFatherInput.value = propFather;
+    if (boMobileInput && propMobile) boMobileInput.value = propMobile;
+    if (boAddrInput && propAddr) boAddrInput.value = propAddr;
+    if (boDocInput && (!boDocInput.value || boDocInput.value.includes('Rental'))) {
+        boDocInput.value = 'Sale Deed / Property Tax Receipt';
     }
 }
 </script>

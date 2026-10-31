@@ -71,12 +71,12 @@ def _parse_partners(form):
 
 def _parse_building_owners(form):
     """Parse array-style building owner fields."""
-    names   = form.getlist('bo_name[]')
-    fathers = form.getlist('bo_father[]')
-    addrs   = form.getlist('bo_address[]')
-    mobiles = form.getlist('bo_mobile[]')
-    docs    = form.getlist('bo_ownership_doc[]')
-    ids_raw = form.getlist('bo_id[]')
+    names   = form.getlist('bo_name[]') or form.getlist('bo_name')
+    fathers = form.getlist('bo_father[]') or form.getlist('bo_father')
+    addrs   = form.getlist('bo_address[]') or form.getlist('bo_address')
+    mobiles = form.getlist('bo_mobile[]') or form.getlist('bo_mobile')
+    docs    = form.getlist('bo_ownership_doc[]') or form.getlist('bo_ownership_doc')
+    ids_raw = form.getlist('bo_id[]') or form.getlist('bo_id')
 
     bos = []
     for i, name in enumerate(names):
@@ -439,17 +439,33 @@ def _handle_file_uploads(files, app_id):
     app_folder = os.path.join(upload_folder, str(app_id))
     os.makedirs(app_folder, exist_ok=True)
 
+    single_file_types = {
+        'building_owner_photo', 'bo_photo',
+        'building_owner_signature', 'bo_signature',
+        'pharmacist_photo', 'pharma_photo',
+        'pharmacist_signature', 'pharma_signature',
+        'proprietor_photo', 'proprietor_signature', 'applicant_signature',
+        'premises_plan'
+    }
+
     for field_name, file in files.items():
         if file and file.filename and _allowed_file(file.filename):
             sf = secure_filename(file.filename)
             stored = f"{field_name}_{sf}"
-            file.save(os.path.join(app_folder, stored))
+            target_path = os.path.join(app_folder, stored)
+            file.save(target_path)
+
+            if field_name in single_file_types:
+                old_atts = Attachment.query.filter_by(application_id=app_id, document_type=field_name).all()
+                for old in old_atts:
+                    db.session.delete(old)
+
             att = Attachment(
                 application_id=app_id,
                 document_type=field_name,
                 original_filename=file.filename,
                 stored_filename=os.path.join(str(app_id), stored),
-                file_size=os.path.getsize(os.path.join(app_folder, stored)),
+                file_size=os.path.getsize(target_path),
                 uploaded_by=current_user.id if (current_user and current_user.is_authenticated) else 1,
             )
             db.session.add(att)
@@ -473,3 +489,21 @@ def download_attachment(app_id, att_id):
     filename = os.path.basename(att.stored_filename)
     return send_from_directory(directory, filename, as_attachment=True,
                                download_name=att.original_filename)
+
+
+@applications_bp.route('/<int:app_id>/attachment/<int:att_id>')
+@login_required
+def view_attachment(app_id, att_id):
+    from flask import send_from_directory
+    app_obj = db.session.get(Application, app_id)
+    if not app_obj:
+        abort(404)
+    if current_user.role != 'admin' and app_obj.created_by != current_user.id:
+        abort(403)
+    att = db.session.get(Attachment, att_id)
+    if not att or att.application_id != app_id:
+        abort(404)
+    folder = current_app.config['UPLOAD_FOLDER']
+    directory = os.path.join(folder, str(app_id))
+    filename = os.path.basename(att.stored_filename)
+    return send_from_directory(directory, filename, as_attachment=False)

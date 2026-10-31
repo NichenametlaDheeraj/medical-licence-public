@@ -629,6 +629,101 @@ class TestMedicalAgencyApp(unittest.TestCase):
             'password': 'user123'
         }, follow_redirects=True)
 
+    def test_18_building_owner_photo_and_pdf(self):
+        """Test building owner photo & digital signature upload, attachment retrieval, view route, and PDF generation."""
+        import io
+        from PIL import Image as PILImg
+        from app.models.attachment import Attachment
+
+        # 1. Login
+        self.client.get('/auth/logout')
+        login_res = self.client.post('/auth/login', data={'username': 'user', 'password': 'user123'}, follow_redirects=True)
+        self.assertEqual(login_res.status_code, 200)
+
+        # 2. Create test photo & signature images in-memory
+        img_buf = io.BytesIO()
+        pil_img = PILImg.new('RGB', (120, 150), color=(30, 80, 140))
+        pil_img.save(img_buf, format='JPEG')
+        img_buf.seek(0)
+
+        sig_buf = io.BytesIO()
+        pil_sig = PILImg.new('RGB', (200, 70), color=(240, 240, 240))
+        pil_sig.save(sig_buf, format='PNG')
+        sig_buf.seek(0)
+
+        # 3. Create application with building owner details, photo & digital signature
+        post_data = {
+            'app_date': date.today().isoformat(),
+            'licence_category': 'new',
+            'licence_type': 'retail',
+            'licence_forms': 'Form 20,Form 21',
+            'business_constitution': 'proprietorship',
+            'firm_name': 'Balaji Pharma Test',
+            'trading_name': 'Balaji Pharma Test',
+            'firm_address': 'Shop 1, Main Road, Kadapa',
+            'proprietor_name': 'Suresh Kumar',
+            'proprietor_father': 'Ramesh Kumar',
+            'proprietor_mobile': '9876543210',
+            'proprietor_email': 'suresh@test.com',
+            'proprietor_residential_address': '1-2-3 Gandhi Nagar, Kadapa',
+            'shop_name': 'Balaji Pharma Test Shop',
+            'ownership_type': 'rented',
+            'area_sqm': '35.5',
+            'shop_address': 'Shop 1, Main Road, Kadapa',
+            # Building Owner inputs
+            'bo_name[]': 'Venkatesh Landlord',
+            'bo_father[]': 'Subba Rao',
+            'bo_mobile[]': '9988776655',
+            'bo_address[]': '4-5-6 Raja Street, Kadapa',
+            'bo_ownership_doc[]': 'Registered Rental Agreement / Sale Deed',
+            # Building Owner Photo & Signature upload
+            'building_owner_photo': (img_buf, 'landlord_photo.jpg'),
+            'building_owner_signature': (sig_buf, 'landlord_signature.png'),
+        }
+
+        resp = self.client.post('/applications/new', data=post_data, content_type='multipart/form-data', follow_redirects=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b'created successfully', resp.data)
+
+        # 4. Verify in DB
+        with self.app.app_context():
+            app_obj = Application.query.filter_by(business_constitution='proprietorship').order_by(Application.id.desc()).first()
+            self.assertIsNotNone(app_obj)
+            self.assertEqual(len(app_obj.building_owners), 1)
+            self.assertEqual(app_obj.building_owners[0].full_name, 'Venkatesh Landlord')
+
+            # Verify attachments
+            bo_photo = app_obj.get_attachment('building_owner_photo')
+            self.assertIsNotNone(bo_photo)
+            self.assertEqual(bo_photo.document_type, 'building_owner_photo')
+            self.assertIn('landlord_photo.jpg', bo_photo.original_filename)
+
+            bo_sig = app_obj.get_attachment('building_owner_signature')
+            self.assertIsNotNone(bo_sig)
+            self.assertEqual(bo_sig.document_type, 'building_owner_signature')
+            self.assertIn('landlord_signature.png', bo_sig.original_filename)
+
+            # 5. Verify view_attachment routes
+            view_photo_res = self.client.get(f'/applications/{app_obj.id}/attachment/{bo_photo.id}')
+            self.assertEqual(view_photo_res.status_code, 200)
+
+            view_sig_res = self.client.get(f'/applications/{app_obj.id}/attachment/{bo_sig.id}')
+            self.assertEqual(view_sig_res.status_code, 200)
+
+            # 6. Generate PDF dossier and verify photo & digital signature are embedded without error
+            docs = generate_all_documents(app_obj, app_obj.created_by)
+            self.assertTrue(len(docs) > 0)
+            dossier_doc = next((d for d in docs if d.document_type == 'complete_dossier'), None)
+            self.assertIsNotNone(dossier_doc)
+            self.assertEqual(dossier_doc.status, 'current')
+
+            # 7. Check view page has photo & signature info
+            view_page = self.client.get(f'/applications/{app_obj.id}')
+            self.assertEqual(view_page.status_code, 200)
+            self.assertIn(b'Passport Size Photo', view_page.data)
+            self.assertIn(b'Digital Signature (Beside Photo)', view_page.data)
+            self.assertIn(b'Placed Beside Photo', view_page.data)
+
 
 if __name__ == '__main__':
     unittest.main()

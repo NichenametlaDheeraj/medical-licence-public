@@ -56,6 +56,15 @@ class Application(db.Model):
     def __repr__(self):
         return f'<Application {self.app_number}>'
 
+    def get_attachment(self, doc_type):
+        """Return the most recent attachment for a given document_type."""
+        if not self.attachments:
+            return None
+        for att in reversed(self.attachments):
+            if att.document_type == doc_type:
+                return att
+        return None
+
     def to_dict(self):
         return {
             'id': self.id,
