@@ -18,6 +18,8 @@ uploads/*
 !uploads/.gitkeep
 generated_documents/*
 !generated_documents/.gitkeep
+instance/test_*.db
+*.test.db
 
 # Operating system files
 Thumbs.db

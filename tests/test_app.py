@@ -23,12 +23,23 @@ class TestMedicalAgencyApp(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-        cls.app = create_app('development')
-        cls.app.config.update({
-            'TESTING': True,
-            'WTF_CSRF_ENABLED': False,
-        })
+        test_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'instance', 'test_medical_agency.db'))
+        if os.path.exists(test_db_path):
+            try:
+                os.remove(test_db_path)
+            except Exception:
+                pass
+        cls.app = create_app('testing')
         cls.client = cls.app.test_client()
+
+    @classmethod
+    def tearDownClass(cls):
+        test_db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'instance', 'test_medical_agency.db'))
+        if os.path.exists(test_db_path):
+            try:
+                os.remove(test_db_path)
+            except Exception:
+                pass
 
     def setUp(self):
         with self.app.app_context():

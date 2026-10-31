@@ -62,8 +62,17 @@ class ProductionConfig(Config):
     WTF_CSRF_ENABLED = True
 
 
+class TestingConfig(Config):
+    TESTING = True
+    DEBUG = False
+    WTF_CSRF_ENABLED = False
+    _test_db = os.path.join(BASE_DIR, 'instance', 'test_medical_agency.db')
+    SQLALCHEMY_DATABASE_URI = 'sqlite:///' + _test_db
+
+
 config = {
     'development': DevelopmentConfig,
     'production': ProductionConfig,
+    'testing': TestingConfig,
     'default': DevelopmentConfig,
 }

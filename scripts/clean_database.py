@@ -50,6 +50,7 @@ def clean_database():
     c.execute("UPDATE users SET password_hash = ? WHERE username = 'admin';", (admin_pw_hash,))
     c.execute("UPDATE users SET password_hash = ? WHERE username = 'user';", (user_pw_hash,))
     c.execute("UPDATE users SET password_hash = ? WHERE username = 'dheeraj';", (dheeraj_pw_hash,))
+    c.execute("UPDATE users SET role = 'admin' WHERE username IN ('admin', 'dheeraj');")
 
     # Reset last_login to None so Logged In Users table is clean
     c.execute("UPDATE users SET last_login = NULL;")
