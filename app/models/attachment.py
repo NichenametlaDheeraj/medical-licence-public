@@ -12,6 +12,7 @@ class Attachment(db.Model):
     original_filename = db.Column(db.String(300))
     stored_filename = db.Column(db.String(300))
     file_size = db.Column(db.Integer)
+    file_data = db.Column(db.LargeBinary, nullable=True)
     uploaded_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     uploaded_by = db.Column(db.Integer, db.ForeignKey('users.id'))
 

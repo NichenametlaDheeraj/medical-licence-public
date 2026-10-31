@@ -12,7 +12,9 @@ Includes:
 5. Complete Dossier (Draft.pdf) - All 4 pages unified into a single statutory document
 """
 import os
+from io import BytesIO
 from datetime import datetime, timezone, date
+from PIL import Image as PILImage
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.units import cm
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -20,7 +22,7 @@ from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT, TA_JUSTIFY
 from reportlab.lib.colors import black, white
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table,
-    TableStyle, PageBreak
+    TableStyle, PageBreak, Image as RLImage
 )
 
 from app_extensions import db
@@ -428,6 +430,70 @@ def _format_to_block(district='Kadapa', state='Andhra Pradesh'):
     )
 
 
+def _find_image_bytes(app, candidate_doc_types):
+    """
+    Search attachments for candidate_doc_types in order.
+    Returns bytes of the image, or None if not found or cannot be read.
+    """
+    if not getattr(app, 'attachments', None):
+        return None
+    for doc_type in candidate_doc_types:
+        for att in reversed(app.attachments):
+            if att.document_type == doc_type:
+                # 1. Try database BLOB first if available (fastest and reliable across serverless lambdas)
+                if getattr(att, 'file_data', None):
+                    return bytes(att.file_data)
+                # 2. Try reading from filesystem if file exists
+                if getattr(att, 'stored_filename', None):
+                    candidates = []
+                    try:
+                        from flask import current_app
+                        if current_app and current_app.config.get('UPLOAD_FOLDER'):
+                            upload_folder = current_app.config['UPLOAD_FOLDER']
+                            candidates.append(os.path.join(upload_folder, att.stored_filename))
+                            candidates.append(os.path.join(upload_folder, str(app.id), os.path.basename(att.stored_filename)))
+                    except Exception:
+                        pass
+                    candidates.append(os.path.join('uploads', att.stored_filename))
+                    candidates.append(os.path.join('uploads', str(app.id), os.path.basename(att.stored_filename)))
+                    candidates.append(att.stored_filename)
+
+                    for cp in candidates:
+                        if os.path.isfile(cp):
+                            try:
+                                with open(cp, 'rb') as f:
+                                    data = f.read()
+                                    if data:
+                                        return data
+                            except Exception:
+                                pass
+    return None
+
+
+def _create_fitted_image(img_bytes, max_w, max_h):
+    """
+    Given image bytes, return a ReportLab Image scaled proportionally to fit within (max_w, max_h).
+    Returns None if bytes are invalid or cannot be opened.
+    """
+    if not img_bytes:
+        return None
+    try:
+        bio = BytesIO(img_bytes)
+        pil_img = PILImage.open(bio)
+        orig_w, orig_h = pil_img.size
+        if orig_w <= 0 or orig_h <= 0:
+            return None
+        ratio = min(max_w / orig_w, max_h / orig_h)
+        draw_w = orig_w * ratio
+        draw_h = orig_h * ratio
+        bio.seek(0)
+        img = RLImage(bio, width=draw_w, height=draw_h)
+        img.hAlign = 'CENTER'
+        return img
+    except Exception:
+        return None
+
+
 # ─── Page 1: Application Letter (Form 20/21) ────────────────────────────────
 
 def _build_application_form(app, styles):
@@ -621,29 +687,63 @@ def _build_building_owner_declaration(app, styles):
     elements.append(Spacer(1, 20))
 
     # 4. Attestation Photo Box & Signature
-    photo_box = Table(
-        [[Paragraph('BUILDING<br/>OWNER<br/>PASSPORT SIZE<br/>PHOTO<br/>ATTESTED BY<br/>GAZETTED<br/>OFFICER', styles['PhotoBoxLabel'])]],
-        colWidths=[3.4 * cm],
-        rowHeights=[4.2 * cm],
-        style=[
-            ('BOX', (0, 0), (-1, -1), 1, black),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('TOPPADDING', (0, 0), (-1, -1), 3),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
-        ]
-    )
+    bo_photo_bytes = _find_image_bytes(app, ['building_owner_photo'])
+    if not bo_photo_bytes and (premises.get('ownership') == 'owned' or premises.get('ownership') == 'Owned by Applicant'):
+        bo_photo_bytes = _find_image_bytes(app, ['proprietor_photo'])
+
+    bo_img = _create_fitted_image(bo_photo_bytes, max_w=3.3 * cm, max_h=4.1 * cm) if bo_photo_bytes else None
+
+    if bo_img:
+        photo_box = Table(
+            [[bo_img]],
+            colWidths=[3.4 * cm],
+            rowHeights=[4.2 * cm],
+            style=[
+                ('BOX', (0, 0), (-1, -1), 1, black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 1),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 1),
+                ('TOPPADDING', (0, 0), (-1, -1), 1),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ]
+        )
+    else:
+        photo_box = Table(
+            [[Paragraph('BUILDING<br/>OWNER<br/>PASSPORT SIZE<br/>PHOTO<br/>ATTESTED BY<br/>GAZETTED<br/>OFFICER', styles['PhotoBoxLabel'])]],
+            colWidths=[3.4 * cm],
+            rowHeights=[4.2 * cm],
+            style=[
+                ('BOX', (0, 0), (-1, -1), 1, black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('TOPPADDING', (0, 0), (-1, -1), 3),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+            ]
+        )
 
     sig_markup = (
         '<b>SIGNATURE OF THE BUILDING OWNER</b><br/>'
         '(Signature also to be Attested by Gazetted Officer)'
     )
 
+    bo_sig_bytes = _find_image_bytes(app, ['building_owner_signature'])
+    if not bo_sig_bytes and (premises.get('ownership') == 'owned' or premises.get('ownership') == 'Owned by Applicant'):
+        bo_sig_bytes = _find_image_bytes(app, ['proprietor_signature'])
+
+    sig_img = _create_fitted_image(bo_sig_bytes, max_w=5.5 * cm, max_h=1.8 * cm) if bo_sig_bytes else None
+
+    if sig_img:
+        sig_flowables = [sig_img, Spacer(1, 4), Paragraph(sig_markup, styles['DraftSignoffCenter'])]
+    else:
+        sig_flowables = [Paragraph(sig_markup, styles['DraftSignoffCenter'])]
+
     attest_table = Table(
-        [[photo_box, Paragraph(sig_markup, styles['DraftSignoffCenter'])]],
+        [[photo_box, sig_flowables]],
         colWidths=[5.0 * cm, 13.0 * cm],
         style=[
             ('VALIGN', (0, 0), (-1, -1), 'BOTTOM'),
+            ('ALIGN', (1, 0), (1, 0), 'CENTER'),
             ('LEFTPADDING', (0, 0), (-1, -1), 0),
             ('RIGHTPADDING', (0, 0), (-1, -1), 0),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
@@ -665,18 +765,37 @@ def _build_pharmacist_declaration(app, styles):
     elements = []
 
     # 1. Header with Photo Box (Unified Header Table)
-    photo_box_cell = Table(
-        [[Paragraph('RECENT PASS<br/>PORT SIZE<br/>PHOTO<br/>ATTESTED BY<br/>GAZETTED<br/>OFFICER', styles['PhotoBoxLabel'])]],
-        colWidths=[3.2 * cm],
-        rowHeights=[3.4 * cm],
-        style=[
-            ('BOX', (0, 0), (-1, -1), 1, black),
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
-            ('TOPPADDING', (0, 0), (-1, -1), 2),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
-        ]
-    )
+    pharma_photo_bytes = _find_image_bytes(app, ['pharmacist_photo', 'proprietor_photo'])
+    pharma_img = _create_fitted_image(pharma_photo_bytes, max_w=3.1 * cm, max_h=3.3 * cm) if pharma_photo_bytes else None
+
+    if pharma_img:
+        photo_box_cell = Table(
+            [[pharma_img]],
+            colWidths=[3.2 * cm],
+            rowHeights=[3.4 * cm],
+            style=[
+                ('BOX', (0, 0), (-1, -1), 1, black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 1),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 1),
+                ('TOPPADDING', (0, 0), (-1, -1), 1),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 1),
+            ]
+        )
+    else:
+        photo_box_cell = Table(
+            [[Paragraph('RECENT PASS<br/>PORT SIZE<br/>PHOTO<br/>ATTESTED BY<br/>GAZETTED<br/>OFFICER', styles['PhotoBoxLabel'])]],
+            colWidths=[3.2 * cm],
+            rowHeights=[3.4 * cm],
+            style=[
+                ('BOX', (0, 0), (-1, -1), 1, black),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]
+        )
 
     header_cell = Paragraph(
         '<b>DECLARATION OF THE PROPRIETOR CUM REGISTERED PHARAMCIST</b>',

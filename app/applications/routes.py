@@ -453,6 +453,8 @@ def _handle_file_uploads(files, app_id):
             sf = secure_filename(file.filename)
             stored = f"{field_name}_{sf}"
             target_path = os.path.join(app_folder, stored)
+            file_bytes = file.read()
+            file.seek(0)
             file.save(target_path)
 
             if field_name in single_file_types:
@@ -465,7 +467,8 @@ def _handle_file_uploads(files, app_id):
                 document_type=field_name,
                 original_filename=file.filename,
                 stored_filename=os.path.join(str(app_id), stored),
-                file_size=os.path.getsize(target_path),
+                file_size=len(file_bytes),
+                file_data=file_bytes,
                 uploaded_by=current_user.id if (current_user and current_user.is_authenticated) else 1,
             )
             db.session.add(att)
@@ -475,7 +478,8 @@ def _handle_file_uploads(files, app_id):
 @applications_bp.route('/<int:app_id>/download-attachment/<int:att_id>')
 @login_required
 def download_attachment(app_id, att_id):
-    from flask import send_from_directory
+    import io
+    from flask import send_from_directory, send_file
     app_obj = db.session.get(Application, app_id)
     if not app_obj:
         abort(404)
@@ -487,14 +491,21 @@ def download_attachment(app_id, att_id):
     folder = current_app.config['UPLOAD_FOLDER']
     directory = os.path.join(folder, str(app_id))
     filename = os.path.basename(att.stored_filename)
-    return send_from_directory(directory, filename, as_attachment=True,
-                               download_name=att.original_filename)
+    filepath = os.path.join(directory, filename)
+    if os.path.isfile(filepath):
+        return send_from_directory(directory, filename, as_attachment=True,
+                                   download_name=att.original_filename)
+    if getattr(att, 'file_data', None):
+        return send_file(io.BytesIO(att.file_data), as_attachment=True,
+                         download_name=att.original_filename)
+    abort(404)
 
 
 @applications_bp.route('/<int:app_id>/attachment/<int:att_id>')
 @login_required
 def view_attachment(app_id, att_id):
-    from flask import send_from_directory
+    import io
+    from flask import send_from_directory, send_file
     app_obj = db.session.get(Application, app_id)
     if not app_obj:
         abort(404)
@@ -506,4 +517,11 @@ def view_attachment(app_id, att_id):
     folder = current_app.config['UPLOAD_FOLDER']
     directory = os.path.join(folder, str(app_id))
     filename = os.path.basename(att.stored_filename)
-    return send_from_directory(directory, filename, as_attachment=False)
+    filepath = os.path.join(directory, filename)
+    if os.path.isfile(filepath):
+        return send_from_directory(directory, filename, as_attachment=False)
+    if getattr(att, 'file_data', None):
+        ext = os.path.splitext(att.original_filename or '')[1].lower()
+        mime = 'image/jpeg' if ext in ('.jpg', '.jpeg') else ('image/png' if ext == '.png' else 'application/octet-stream')
+        return send_file(io.BytesIO(att.file_data), mimetype=mime, as_attachment=False)
+    abort(404)
