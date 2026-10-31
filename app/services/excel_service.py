@@ -82,7 +82,7 @@ def _add_sheet_business(wb, applications):
     ws = wb.create_sheet('Business Details')
     headers = [
         'App Number', 'Firm Name', 'Trading Name', 'Constitution', 'Firm Reg No',
-        'PAN', 'Email', 'Mobile', 'Alt Contact',
+        'GSTIN', 'PAN', 'Email', 'Mobile', 'Alt Contact',
         'Door No', 'Floor', 'Street', 'Village', 'Gram Panchayat',
         'Mandal', 'District', 'State', 'PIN',
         'Proprietor Name', 'Proprietor Father Name',
@@ -106,6 +106,7 @@ def _add_sheet_business(wb, applications):
             bd.trading_name or '',
             app.business_constitution or '',
             bd.firm_reg_number or '',
+            bd.gst_number or '',
             bd.pan or '',
             bd.email or '',
             bd.mobile or '',

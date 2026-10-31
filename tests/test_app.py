@@ -724,6 +724,147 @@ class TestMedicalAgencyApp(unittest.TestCase):
             self.assertIn(b'Digital Signature (Beside Photo)', view_page.data)
             self.assertIn(b'Placed Beside Photo', view_page.data)
 
+    def test_19_applicant_photo_signature_partnership_gst_and_pdf(self):
+        """Test complete workflow: multiple partners, GST, applicant photo, applicant signature, and PDF generation."""
+        import io
+        import pypdf
+        from PIL import Image as PILImg
+        from app.models.application import Application
+        from app.services.pdf_service import generate_all_documents, build_pdf_bytes
+
+        # 1. Login
+        self.client.get('/auth/logout')
+        self.client.post('/auth/login', data={'username': 'user', 'password': 'user123'}, follow_redirects=True)
+
+        # 2. Prepare sample photo and signature images
+        photo_buf = io.BytesIO()
+        pil_photo = PILImg.new('RGB', (140, 180), color=(50, 120, 200))
+        pil_photo.save(photo_buf, format='JPEG')
+        photo_buf.seek(0)
+
+        sig_buf = io.BytesIO()
+        pil_sig = PILImg.new('RGBA', (220, 80), color=(255, 255, 255, 0))
+        pil_sig.save(sig_buf, format='PNG')
+        sig_buf.seek(0)
+
+        bo_photo_buf = io.BytesIO()
+        PILImg.new('RGB', (140, 180), color=(80, 150, 60)).save(bo_photo_buf, format='JPEG')
+        bo_photo_buf.seek(0)
+
+        bo_sig_buf = io.BytesIO()
+        PILImg.new('RGBA', (220, 80), color=(255, 255, 255, 0)).save(bo_sig_buf, format='PNG')
+        bo_sig_buf.seek(0)
+
+        # 3. Submit Partnership form with GST, multiple partners, applicant photo, applicant signature
+        post_data = {
+            'app_date': date.today().isoformat(),
+            'licence_category': 'new',
+            'licence_type': 'retail',
+            'licence_forms': 'Form 20,Form 21',
+            'business_constitution': 'partnership',
+            'firm_name': 'Royal Care Healthcare',
+            'trading_name': 'Royal Care Pharmacy',
+            'gst_number': '37AAACR1234F1Z5',
+            'pan': 'AAACR1234F',
+            'mobile': '9876501234',
+            'email': 'royalcare@example.com',
+            'assessment_number': 'ASST-998877',
+            'full_address': 'Shop 12, Commercial Complex, Main Road, Kadapa',
+            'district': 'Kadapa',
+            'pincode': '516001',
+            # Dynamic Partners
+            'partner_name[]': ['Rajesh Sharma', 'Priya Sharma'],
+            'partner_father[]': ['Om Prakash Sharma', 'Ramesh Chandra'],
+            'partner_role[]': ['Managing Partner', 'Partner'],
+            'partner_mobile[]': ['9876501234', '9876505678'],
+            'partner_pan[]': ['ABCPS1234A', 'XYZPS5678B'],
+            'partner_address[]': ['12-3-4 Gandhi Road, Kadapa', '12-3-4 Gandhi Road, Kadapa'],
+            'partner_auth_signatory[]': ['1'],
+            # Premises
+            'ownership_type': 'rented',
+            'area_sqm': '38.5',
+            'shop_address': 'Shop 12, Commercial Complex, Main Road, Kadapa',
+            # Building Owner
+            'bo_name[]': ['Gopal Reddy'],
+            'bo_father[]': ['Siva Reddy'],
+            'bo_mobile[]': ['9123456789'],
+            'bo_address[]': ['5-6-7 Reddy Street, Kadapa'],
+            'bo_ownership_doc[]': ['Registered Lease Deed No. 1234/2026'],
+            # Pharmacist
+            'pharma_name[]': ['Kavitha Devi'],
+            'pharma_father[]': ['Narayana Swamy'],
+            'pharma_qual[]': ['B.Pharm'],
+            'pharma_reg_no[]': ['AP-PH-887766'],
+            'pharma_mobile[]': ['9000011122'],
+            'pharma_address[]': ['Flat 201, Balaji Towers, Kadapa'],
+            # Uploads
+            'applicant_photo': (photo_buf, 'rajesh_passport_photo.jpg'),
+            'applicant_signature': (sig_buf, 'rajesh_signature.png'),
+            'building_owner_photo': (bo_photo_buf, 'gopal_photo.jpg'),
+            'building_owner_signature': (bo_sig_buf, 'gopal_signature.png'),
+        }
+
+        resp = self.client.post('/applications/new', data=post_data, content_type='multipart/form-data', follow_redirects=True)
+        self.assertEqual(resp.status_code, 200)
+        self.assertIn(b'created successfully', resp.data)
+
+        # 4. Verify in DB
+        with self.app.app_context():
+            app_obj = Application.query.filter_by(business_constitution='partnership').order_by(Application.id.desc()).first()
+            self.assertIsNotNone(app_obj)
+            self.assertEqual(len(app_obj.partners), 2)
+            self.assertEqual(app_obj.partners[0].full_name, 'Rajesh Sharma')
+            self.assertEqual(app_obj.partners[1].full_name, 'Priya Sharma')
+            self.assertEqual(app_obj.business_details.gst_number, '37AAACR1234F1Z5')
+
+            # Verify attachments
+            app_photo_att = app_obj.get_attachment('applicant_photo')
+            self.assertIsNotNone(app_photo_att)
+            self.assertIn('rajesh_passport_photo.jpg', app_photo_att.original_filename)
+
+            app_sig_att = app_obj.get_attachment('applicant_signature')
+            self.assertIsNotNone(app_sig_att)
+            self.assertIn('rajesh_signature.png', app_sig_att.original_filename)
+
+            # 5. Generate PDF dossier
+            pdf_bytes, filename = build_pdf_bytes(app_obj, 'complete_dossier')
+            self.assertIsNotNone(pdf_bytes)
+            self.assertTrue(len(pdf_bytes) > 2000)
+
+            # 6. Verify with pypdf: EXACTLY 4 pages, and text extraction checks
+            pdf_reader = pypdf.PdfReader(io.BytesIO(pdf_bytes))
+            self.assertEqual(len(pdf_reader.pages), 4, "PDF must preserve statutory 4-page structure exactly")
+
+            # Page 1 checks:
+            p1_text = pdf_reader.pages[0].extract_text()
+            self.assertIn('Royal Care Healthcare', p1_text)
+            self.assertIn('Rajesh Sharma', p1_text)
+            self.assertIn('Yours faithfully', p1_text)
+
+            # Page 2 checks:
+            p2_text = pdf_reader.pages[1].extract_text()
+            self.assertIn('Declaration of Building Owner', p2_text)
+            self.assertIn('Gopal Reddy', p2_text)
+            self.assertIn('SIGNATURE OF THE BUILDING OWNER', p2_text)
+
+            # Page 3 checks:
+            p3_text = pdf_reader.pages[2].extract_text()
+            self.assertIn('DECLARATION OF THE PROPRIETOR', p3_text)
+            self.assertIn('KAVITHA DEVI', p3_text)
+            self.assertIn('SIGNATURE', p3_text)
+
+            # Page 4 checks:
+            p4_text = pdf_reader.pages[3].extract_text()
+            self.assertIn('Appointment /Acceptance Letter', p4_text)
+            self.assertIn('Kavitha Devi', p4_text)
+            self.assertIn('Signature of Applicant / Firm', p4_text)
+
+        # 7. Check preview route renders with Print button
+        preview_res = self.client.get(f'/pdf/preview/{app_obj.id}')
+        self.assertEqual(preview_res.status_code, 200)
+        self.assertIn(b'Print PDF', preview_res.data)
+        self.assertIn(b'Download Draft.pdf', preview_res.data)
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -12,6 +12,7 @@ class BusinessDetails(db.Model):
     firm_name = db.Column(db.String(200))
     trading_name = db.Column(db.String(200))
     firm_reg_number = db.Column(db.String(100))
+    gst_number = db.Column(db.String(30))
     pan = db.Column(db.String(20))
     email = db.Column(db.String(120))
     mobile = db.Column(db.String(15))

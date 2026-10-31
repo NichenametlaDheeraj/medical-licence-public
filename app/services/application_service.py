@@ -117,7 +117,7 @@ def _upsert_business(app, data):
     }
 
     fields = [
-        'firm_name', 'trading_name', 'firm_reg_number', 'pan', 'email',
+        'firm_name', 'trading_name', 'firm_reg_number', 'gst_number', 'pan', 'email',
         'mobile', 'alt_contact', 'alternate_contact', 'assessment_number',
         'door_number', 'floor', 'street', 'village', 'gram_panchayat',
         'mandal', 'district', 'state', 'pincode', 'full_address',

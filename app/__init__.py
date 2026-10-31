@@ -75,6 +75,17 @@ def create_app(config_name='default'):
 
     with app.app_context():
         db.create_all()
+        # Ensure schema migrations for new columns
+        try:
+            from sqlalchemy import text
+            with db.engine.connect() as conn:
+                res = conn.execute(text("PRAGMA table_info(business_details);")).fetchall()
+                cols = [r[1] for r in res]
+                if 'gst_number' not in cols:
+                    conn.execute(text("ALTER TABLE business_details ADD COLUMN gst_number VARCHAR(30);"))
+                    conn.commit()
+        except Exception:
+            pass
         _seed_users(app)
 
     return app

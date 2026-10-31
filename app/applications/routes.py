@@ -196,6 +196,7 @@ def _build_data_from_form(form):
         'firm_name': form.get('firm_name'),
         'trading_name': form.get('trading_name'),
         'firm_reg_number': form.get('firm_reg_number'),
+        'gst_number': form.get('gst_number'),
         'pan': form.get('pan'),
         'email': form.get('email'),
         'mobile': form.get('mobile'),
@@ -444,7 +445,8 @@ def _handle_file_uploads(files, app_id):
         'building_owner_signature', 'bo_signature',
         'pharmacist_photo', 'pharma_photo',
         'pharmacist_signature', 'pharma_signature',
-        'proprietor_photo', 'proprietor_signature', 'applicant_signature',
+        'proprietor_photo', 'proprietor_signature',
+        'applicant_photo', 'applicant_signature',
         'premises_plan'
     }
 
