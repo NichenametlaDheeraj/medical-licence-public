@@ -549,17 +549,10 @@
                            value="{{ prem.storage_facilities if prem else '' }}" placeholder="Refrigerator, Shelves, AC">
                 </div>
 
-                <div class="col-md-8">
+                <div class="col-12">
                     <label class="form-label">Complete Firm / Shop Premises Address</label>
                     <textarea name="shop_address" class="form-control" rows="2"
                               placeholder="Full premises address (leave blank if same as Complete Firm Address above)">{{ prem.full_address if prem else '' }}</textarea>
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label">Premises Plan (Upload)</label>
-                    <input type="file" name="premises_plan" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
-                    {% if app and app.get_attachment('premises_plan') %}
-                    <small class="text-success d-block mt-1"><i class="bi bi-check-circle"></i> Plan attached: {{ app.get_attachment('premises_plan').original_filename }}</small>
-                    {% endif %}
                 </div>
             </div>
 
