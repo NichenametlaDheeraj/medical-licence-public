@@ -40,17 +40,17 @@
         <!-- Navigation Tabs for Merged Profile & Account Options -->
         <ul class="nav nav-pills mt-4 border-top pt-3" id="profileTabs" role="tablist">
             <li class="nav-item" role="presentation">
-                <button class="nav-link {% if active_tab == 'overview' or not active_tab %}active{% endif %}" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview" type="button" role="tab" aria-controls="overview" aria-selected="{% if active_tab == 'overview' or not active_tab %}true{% else %}false{% endif %}">
+                <button class="nav-link {% if active_tab == 'overview' or not active_tab %}active{% endif %}" id="overview-tab" data-bs-toggle="pill" data-bs-target="#pane-overview" type="button" role="tab" aria-controls="pane-overview" aria-selected="{% if active_tab == 'overview' or not active_tab %}true{% else %}false{% endif %}">
                     <i class="bi bi-person-vcard me-2"></i>Profile Overview
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link {% if active_tab == 'username' %}active{% endif %}" id="username-tab" data-bs-toggle="pill" data-bs-target="#username" type="button" role="tab" aria-controls="username" aria-selected="{% if active_tab == 'username' %}true{% else %}false{% endif %}">
+                <button class="nav-link {% if active_tab == 'username' %}active{% endif %}" id="username-tab" data-bs-toggle="pill" data-bs-target="#pane-username" type="button" role="tab" aria-controls="pane-username" aria-selected="{% if active_tab == 'username' %}true{% else %}false{% endif %}">
                     <i class="bi bi-person-gear me-2"></i>Change Username
                 </button>
             </li>
             <li class="nav-item" role="presentation">
-                <button class="nav-link {% if active_tab == 'password' %}active{% endif %}" id="password-tab" data-bs-toggle="pill" data-bs-target="#password" type="button" role="tab" aria-controls="password" aria-selected="{% if active_tab == 'password' %}true{% else %}false{% endif %}">
+                <button class="nav-link {% if active_tab == 'password' %}active{% endif %}" id="password-tab" data-bs-toggle="pill" data-bs-target="#pane-password" type="button" role="tab" aria-controls="pane-password" aria-selected="{% if active_tab == 'password' %}true{% else %}false{% endif %}">
                     <i class="bi bi-shield-lock me-2"></i>Change Password
                 </button>
             </li>
@@ -60,7 +60,7 @@
     <!-- Tab Content -->
     <div class="tab-content" id="profileTabsContent">
         <!-- TAB 1: Profile Overview -->
-        <div class="tab-pane fade {% if active_tab == 'overview' or not active_tab %}show active{% endif %}" id="overview" role="tabpanel" aria-labelledby="overview-tab">
+        <div class="tab-pane fade {% if active_tab == 'overview' or not active_tab %}show active{% endif %}" id="pane-overview" role="tabpanel" aria-labelledby="overview-tab">
             <div class="row g-4">
                 <!-- Account Particulars -->
                 <div class="col-lg-6">
@@ -187,7 +187,7 @@
         </div>
 
         <!-- TAB 2: Change Username Form -->
-        <div class="tab-pane fade {% if active_tab == 'username' %}show active{% endif %}" id="username" role="tabpanel" aria-labelledby="username-tab">
+        <div class="tab-pane fade {% if active_tab == 'username' %}show active{% endif %}" id="pane-username" role="tabpanel" aria-labelledby="username-tab">
             <div class="row justify-content-center">
                 <div class="col-lg-6 col-md-8">
                     <div class="card-glass p-4">
@@ -224,11 +224,11 @@
 
                             <!-- Current Password to verify -->
                             <div class="mb-4">
-                                <label for="password" class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                                <label for="verify_password_for_username" class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
                                 <div class="input-icon-wrap" style="position:relative;">
-                                    <input type="password" id="password" name="password" class="form-control"
+                                    <input type="password" id="verify_password_for_username" name="password" class="form-control"
                                            placeholder="Enter your current password to confirm" required style="padding-right:42px;" autocomplete="current-password">
-                                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('password', this)"
+                                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('verify_password_for_username', this)"
                                             style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:4px 8px;"
                                             title="Toggle visibility" aria-label="Toggle password visibility">
                                         <i class="bi bi-eye"></i>
@@ -252,7 +252,7 @@
         </div>
 
         <!-- TAB 3: Change Password Form -->
-        <div class="tab-pane fade {% if active_tab == 'password' %}show active{% endif %}" id="password" role="tabpanel" aria-labelledby="password-tab">
+        <div class="tab-pane fade {% if active_tab == 'password' %}show active{% endif %}" id="pane-password" role="tabpanel" aria-labelledby="password-tab">
             <div class="row justify-content-center">
                 <div class="col-lg-6 col-md-8">
                     <div class="card-glass p-4">
@@ -351,16 +351,17 @@ function togglePasswordVisibility(inputId, btn) {
 }
 
 function switchTab(tabName) {
-    const triggerEl = document.getElementById(tabName + '-tab');
+    const clean = tabName.replace('pane-', '').replace('#', '');
+    const triggerEl = document.getElementById(clean + '-tab');
     if (triggerEl) {
-        const tab = new bootstrap.Tab(triggerEl);
+        const tab = bootstrap.Tab.getOrCreateInstance ? bootstrap.Tab.getOrCreateInstance(triggerEl) : new bootstrap.Tab(triggerEl);
         tab.show();
-        history.replaceState(null, null, '#' + tabName);
+        history.replaceState(null, null, '#' + clean);
     }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    const hash = window.location.hash.replace('#', '');
+    const hash = window.location.hash.replace('#', '').replace('pane-', '');
     if (hash === 'username' || hash === 'password' || hash === 'overview') {
         switchTab(hash);
     }
@@ -368,7 +369,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const tabButtons = document.querySelectorAll('#profileTabs button[data-bs-toggle="pill"]');
     tabButtons.forEach(btn => {
         btn.addEventListener('shown.bs.tab', function(e) {
-            const targetId = e.target.getAttribute('data-bs-target').replace('#', '');
+            const targetId = e.target.getAttribute('data-bs-target').replace('#pane-', '').replace('#', '');
             history.replaceState(null, null, '#' + targetId);
         });
     });
