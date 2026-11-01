@@ -50,6 +50,11 @@
                 </button>
             </li>
             <li class="nav-item" role="presentation">
+                <button class="nav-link {% if active_tab == 'email' %}active{% endif %}" id="email-tab" data-bs-toggle="pill" data-bs-target="#pane-email" type="button" role="tab" aria-controls="pane-email" aria-selected="{% if active_tab == 'email' %}true{% else %}false{% endif %}">
+                    <i class="bi bi-envelope-at me-2"></i>Change Email
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
                 <button class="nav-link {% if active_tab == 'password' %}active{% endif %}" id="password-tab" data-bs-toggle="pill" data-bs-target="#pane-password" type="button" role="tab" aria-controls="pane-password" aria-selected="{% if active_tab == 'password' %}true{% else %}false{% endif %}">
                     <i class="bi bi-shield-lock me-2"></i>Change Password
                 </button>
@@ -93,7 +98,12 @@
                                     <div class="fw-semibold text-dark">Email Address</div>
                                     <div class="small text-muted">Associated notification & recovery email</div>
                                 </div>
-                                <span class="text-dark fw-medium">{{ current_user.email }}</span>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-dark fw-medium">{{ current_user.email }}</span>
+                                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="switchTab('email')">
+                                        <i class="bi bi-pencil me-1"></i>Edit
+                                    </button>
+                                </div>
                             </div>
                             <div class="list-group-item px-0 d-flex justify-content-between align-items-center bg-transparent py-3">
                                 <div>
@@ -251,6 +261,71 @@
             </div>
         </div>
 
+        <!-- TAB: Change Email Form -->
+        <div class="tab-pane fade {% if active_tab == 'email' %}show active{% endif %}" id="pane-email" role="tabpanel" aria-labelledby="email-tab">
+            <div class="row justify-content-center">
+                <div class="col-lg-6 col-md-8">
+                    <div class="card-glass p-4">
+                        <div class="d-flex align-items-center mb-4 pb-2 border-bottom">
+                            <div class="logo-circle me-3" style="width:48px;height:48px;border-radius:12px;background:linear-gradient(135deg,#1a3c6e,#0d9488);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.3rem;">
+                                <i class="bi bi-envelope-at"></i>
+                            </div>
+                            <div>
+                                <h5 class="mb-0 text-navy fw-bold">Update Email Address</h5>
+                                <small class="text-muted">Current email: <strong>{{ current_user.email }}</strong></small>
+                            </div>
+                        </div>
+
+                        <form method="POST" action="{{ url_for('auth.change_email') }}">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                            <!-- Current Email (Readonly) -->
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Current Email Address</label>
+                                <div class="input-icon-wrap">
+                                    <input type="email" class="form-control bg-light text-muted" value="{{ current_user.email }}" readonly disabled>
+                                </div>
+                            </div>
+
+                            <!-- New Email -->
+                            <div class="mb-3">
+                                <label for="new_email" class="form-label fw-semibold">New Email Address <span class="text-danger">*</span></label>
+                                <div class="input-icon-wrap">
+                                    <input type="email" id="new_email" name="new_email" class="form-control" maxlength="120"
+                                           placeholder="Enter new email address (e.g. name@domain.com)" required autocomplete="email">
+                                </div>
+                                <small class="text-muted">Must be a valid and unique email address for account recovery and notifications.</small>
+                            </div>
+
+                            <!-- Password to verify -->
+                            <div class="mb-4">
+                                <label for="verify_password_for_email" class="form-label fw-semibold">Confirm Password <span class="text-danger">*</span></label>
+                                <div class="input-icon-wrap" style="position:relative;">
+                                    <input type="password" id="verify_password_for_email" name="password" class="form-control"
+                                           placeholder="Enter your current password to confirm" required style="padding-right:42px;" autocomplete="current-password">
+                                    <button type="button" class="password-toggle-btn" onclick="togglePasswordVisibility('verify_password_for_email', this)"
+                                            style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;color:#64748b;cursor:pointer;padding:4px 8px;"
+                                            title="Toggle visibility" aria-label="Toggle password visibility">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                </div>
+                                <small class="text-muted">Enter your current password to verify your identity before updating your email.</small>
+                            </div>
+
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary px-4">
+                                    <i class="bi bi-check2-circle me-1"></i> Update Email Address
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="switchTab('overview')">
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- TAB 3: Change Password Form -->
         <div class="tab-pane fade {% if active_tab == 'password' %}show active{% endif %}" id="pane-password" role="tabpanel" aria-labelledby="password-tab">
             <div class="row justify-content-center">
@@ -362,7 +437,7 @@ function switchTab(tabName) {
 
 document.addEventListener('DOMContentLoaded', function() {
     const hash = window.location.hash.replace('#', '').replace('pane-', '');
-    if (hash === 'username' || hash === 'password' || hash === 'overview') {
+    if (hash === 'username' || hash === 'email' || hash === 'password' || hash === 'overview') {
         switchTab(hash);
     }
 

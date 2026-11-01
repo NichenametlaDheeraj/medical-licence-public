@@ -111,7 +111,7 @@ def _get_user_stats(user):
 @login_required
 def profile():
     active_tab = request.args.get('tab', 'overview')
-    if active_tab not in ['overview', 'username', 'password']:
+    if active_tab not in ['overview', 'username', 'email', 'password']:
         active_tab = 'overview'
     total_apps, draft_apps, approved_apps = _get_user_stats(current_user)
     return render_template(
@@ -121,6 +121,53 @@ def profile():
         draft_apps=draft_apps,
         approved_apps=approved_apps
     )
+
+
+@auth_bp.route('/change-email', methods=['GET', 'POST'])
+@login_required
+def change_email():
+    total_apps, draft_apps, approved_apps = _get_user_stats(current_user)
+    if request.method == 'POST':
+        new_email = request.form.get('new_email', '').strip().lower()
+        password = request.form.get('password', '')
+
+        if not new_email:
+            flash('Please enter a new email address.', 'warning')
+            return render_template('profile.html', active_tab='email', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
+
+        if '@' not in new_email or '.' not in new_email.split('@')[-1] or len(new_email) < 5:
+            flash('Please enter a valid email address.', 'danger')
+            return render_template('profile.html', active_tab='email', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
+
+        if len(new_email) > 120:
+            flash('Email address cannot exceed 120 characters.', 'danger')
+            return render_template('profile.html', active_tab='email', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
+
+        if new_email == current_user.email.lower():
+            flash('New email address is the same as your current email.', 'info')
+            return render_template('profile.html', active_tab='email', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
+
+        # Check if email is already taken by another account
+        existing_user = User.query.filter(
+            User.email.ilike(new_email),
+            User.id != current_user.id
+        ).first()
+        if existing_user:
+            flash(f'Email address "{new_email}" is already in use by another account.', 'danger')
+            return render_template('profile.html', active_tab='email', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
+
+        # Verify password
+        if not check_password_hash(current_user.password_hash, password):
+            flash('Incorrect password. Please verify your current password to update email address.', 'danger')
+            return render_template('profile.html', active_tab='email', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
+
+        old_email = current_user.email
+        current_user.email = new_email
+        db.session.commit()
+        flash(f'Your email address has been updated successfully from "{old_email}" to "{new_email}"!', 'success')
+        return redirect(url_for('auth.profile'))
+
+    return render_template('profile.html', active_tab='email', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
 
 @auth_bp.route('/change-username', methods=['GET', 'POST'])

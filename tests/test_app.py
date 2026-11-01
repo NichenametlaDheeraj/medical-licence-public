@@ -905,11 +905,44 @@ class TestMedicalAgencyApp(unittest.TestCase):
         self.assertEqual(res_user_tab.status_code, 200)
         self.assertIn(b'Update Username', res_user_tab.data)
 
+        res_email_tab = self.client.get('/auth/profile?tab=email')
+        self.assertEqual(res_email_tab.status_code, 200)
+        self.assertIn(b'Update Email Address', res_email_tab.data)
+
         res_pass_tab = self.client.get('/auth/profile?tab=password')
         self.assertEqual(res_pass_tab.status_code, 200)
         self.assertIn(b'Update Account Password', res_pass_tab.data)
 
-        # 5. Admin profile check
+        # 5. Test Change Email flow
+        # Wrong password fails
+        res_wrong_pw = self.client.post('/auth/change-email', data={
+            'new_email': 'updated@example.com',
+            'password': 'wrongpassword'
+        }, follow_redirects=True)
+        self.assertIn(b'Incorrect password', res_wrong_pw.data)
+
+        # Duplicate email fails
+        res_dup = self.client.post('/auth/change-email', data={
+            'new_email': 'admin@medicalagency.com',
+            'password': 'user123'
+        }, follow_redirects=True)
+        self.assertIn(b'already in use', res_dup.data)
+
+        # Successful email update
+        res_success = self.client.post('/auth/change-email', data={
+            'new_email': 'user_new@medicalagency.com',
+            'password': 'user123'
+        }, follow_redirects=True)
+        self.assertIn(b'email address has been updated successfully', res_success.data)
+        self.assertIn(b'user_new@medicalagency.com', res_success.data)
+
+        # Restore original email
+        self.client.post('/auth/change-email', data={
+            'new_email': 'user@medicalagency.com',
+            'password': 'user123'
+        }, follow_redirects=True)
+
+        # 6. Admin profile check
         self.client.get('/auth/logout')
         self.client.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
         res_admin = self.client.get('/auth/profile')
