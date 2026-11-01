@@ -876,6 +876,47 @@ class TestMedicalAgencyApp(unittest.TestCase):
         self.assertIn(b'Print PDF', preview_res.data)
         self.assertIn(b'Download Draft.pdf', preview_res.data)
 
+    def test_20_profile_and_merged_account_options(self):
+        """Test My Profile section with merged Account options (Profile, Username, Password)."""
+        # 1. Login as standard user
+        self.client.get('/auth/logout')
+        self.client.post('/auth/login', data={'username': 'user', 'password': 'user123'}, follow_redirects=True)
+
+        # 2. Access /auth/profile
+        res = self.client.get('/auth/profile')
+        self.assertEqual(res.status_code, 200)
+        self.assertIn(b'My Profile', res.data)
+        self.assertIn(b'MY PROFILE', res.data)
+        self.assertIn(b'Profile Overview', res.data)
+        self.assertIn(b'Update Username', res.data)
+        self.assertIn(b'Update Account Password', res.data)
+        self.assertIn(b'user@medicalagency.com', res.data)
+        # Sidebar should only have My Profile and Logout under MY PROFILE (no standalone change links)
+        self.assertNotIn(b'<span>Change Username</span>', res.data)
+        self.assertNotIn(b'<span>Change Password</span>', res.data)
+
+        # 3. Access shortcut /profile
+        res_redirect = self.client.get('/profile', follow_redirects=True)
+        self.assertEqual(res_redirect.status_code, 200)
+        self.assertIn(b'My Profile', res_redirect.data)
+
+        # 4. Access with tab parameters
+        res_user_tab = self.client.get('/auth/profile?tab=username')
+        self.assertEqual(res_user_tab.status_code, 200)
+        self.assertIn(b'Update Username', res_user_tab.data)
+
+        res_pass_tab = self.client.get('/auth/profile?tab=password')
+        self.assertEqual(res_pass_tab.status_code, 200)
+        self.assertIn(b'Update Account Password', res_pass_tab.data)
+
+        # 5. Admin profile check
+        self.client.get('/auth/logout')
+        self.client.post('/auth/login', data={'username': 'admin', 'password': 'admin123'}, follow_redirects=True)
+        res_admin = self.client.get('/auth/profile')
+        self.assertEqual(res_admin.status_code, 200)
+        self.assertIn(b'ADMINISTRATOR', res_admin.data)
+        self.assertIn(b'admin@medicalagency.com', res_admin.data)
+
 
 if __name__ == '__main__':
     unittest.main()

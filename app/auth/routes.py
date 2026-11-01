@@ -94,28 +94,58 @@ def register():
     return render_template('register.html')
 
 
+def _get_user_stats(user):
+    from app.models.application import Application
+    if user.role == 'admin':
+        total = Application.query.count()
+        drafts = Application.query.filter_by(status='draft').count()
+        approved = Application.query.filter(Application.status.in_(['approved', 'ready', 'documents_generated'])).count()
+    else:
+        total = Application.query.filter_by(created_by=user.id).count()
+        drafts = Application.query.filter_by(created_by=user.id, status='draft').count()
+        approved = Application.query.filter(Application.created_by == user.id, Application.status.in_(['approved', 'ready', 'documents_generated'])).count()
+    return total, drafts, approved
+
+
+@auth_bp.route('/profile', methods=['GET'])
+@login_required
+def profile():
+    active_tab = request.args.get('tab', 'overview')
+    if active_tab not in ['overview', 'username', 'password']:
+        active_tab = 'overview'
+    total_apps, draft_apps, approved_apps = _get_user_stats(current_user)
+    return render_template(
+        'profile.html',
+        active_tab=active_tab,
+        total_apps=total_apps,
+        draft_apps=draft_apps,
+        approved_apps=approved_apps
+    )
+
+
 @auth_bp.route('/change-username', methods=['GET', 'POST'])
 @login_required
 def change_username():
+    total_apps, draft_apps, approved_apps = _get_user_stats(current_user)
     if request.method == 'POST':
         new_username = request.form.get('new_username', '').strip()
         password = request.form.get('password', '')
 
         if not new_username:
             flash('Please enter a new username.', 'warning')
-            return render_template('change_username.html')
+            return render_template('profile.html', active_tab='username', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         if len(new_username) < 3:
             flash('Username must be at least 3 characters long.', 'danger')
-            return render_template('change_username.html')
+            return render_template('profile.html', active_tab='username', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         if len(new_username) > 80:
             flash('Username cannot exceed 80 characters.', 'danger')
-            return render_template('change_username.html')
+            return render_template('profile.html', active_tab='username', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         if new_username.lower() == current_user.username.lower():
             flash('New username is the same as your current username.', 'info')
-            return render_template('change_username.html')
+            return render_template('profile.html', active_tab='username', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         # Check if username already exists across other users
         existing_user = User.query.filter(
@@ -124,25 +154,26 @@ def change_username():
         ).first()
         if existing_user:
             flash(f'Username "{new_username}" is already taken. Please choose another.', 'danger')
-            return render_template('change_username.html')
+            return render_template('profile.html', active_tab='username', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         # Verify current password
         if not check_password_hash(current_user.password_hash, password):
             flash('Incorrect password. Please verify your current password to change username.', 'danger')
-            return render_template('change_username.html')
+            return render_template('profile.html', active_tab='username', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         old_username = current_user.username
         current_user.username = new_username
         db.session.commit()
         flash(f'Your username has been changed successfully from "{old_username}" to "{new_username}"!', 'success')
-        return redirect(url_for('dashboard.index'))
+        return redirect(url_for('auth.profile'))
 
-    return render_template('change_username.html')
+    return render_template('profile.html', active_tab='username', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
 
 @auth_bp.route('/change-password', methods=['GET', 'POST'])
 @login_required
 def change_password():
+    total_apps, draft_apps, approved_apps = _get_user_stats(current_user)
     if request.method == 'POST':
         current_password = request.form.get('current_password', '')
         new_password = request.form.get('new_password', '').strip()
@@ -150,22 +181,22 @@ def change_password():
 
         if not check_password_hash(current_user.password_hash, current_password):
             flash('Current password is incorrect.', 'danger')
-            return render_template('change_password.html')
+            return render_template('profile.html', active_tab='password', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         if len(new_password) < 6:
             flash('New password must be at least 6 characters long.', 'danger')
-            return render_template('change_password.html')
+            return render_template('profile.html', active_tab='password', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         if new_password != confirm_password:
             flash('New password and confirmation do not match.', 'danger')
-            return render_template('change_password.html')
+            return render_template('profile.html', active_tab='password', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
         current_user.password_hash = generate_password_hash(new_password)
         db.session.commit()
         flash('Your password has been changed successfully!', 'success')
-        return redirect(url_for('dashboard.index'))
+        return redirect(url_for('auth.profile'))
 
-    return render_template('change_password.html')
+    return render_template('profile.html', active_tab='password', total_apps=total_apps, draft_apps=draft_apps, approved_apps=approved_apps)
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])

@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request
+from flask import Blueprint, render_template, request, redirect, url_for
 from flask_login import login_required, current_user
 from app_extensions import db
 from app.models.application import Application
@@ -6,6 +6,16 @@ from app.models.generated_document import GeneratedDocument
 from sqlalchemy import func
 
 dashboard_bp = Blueprint('dashboard', __name__)
+
+
+@dashboard_bp.route('/profile')
+@dashboard_bp.route('/my-profile')
+@login_required
+def profile_redirect():
+    tab = request.args.get('tab')
+    if tab:
+        return redirect(url_for('auth.profile', tab=tab))
+    return redirect(url_for('auth.profile'))
 
 
 @dashboard_bp.route('/')

@@ -96,30 +96,40 @@ def _seed_users(app):
     from app.models.user import User
     from werkzeug.security import generate_password_hash
 
-    # 1. Admin user
-    admin = User.query.filter_by(username=app.config['ADMIN_USERNAME']).first()
-    if not admin:
-        admin = User(
-            username=app.config['ADMIN_USERNAME'],
-            email=app.config['ADMIN_EMAIL'],
-            password_hash=generate_password_hash(app.config['ADMIN_PASSWORD']),
-            role='admin',
-            is_active=True,
-        )
-        db.session.add(admin)
-        app.logger.info('Admin user created: %s', app.config['ADMIN_USERNAME'])
+    try:
+        # 1. Admin user (check both username and email to prevent duplicate conflicts if username was changed)
+        admin = User.query.filter(
+            (User.username == app.config['ADMIN_USERNAME']) | 
+            (User.email == app.config['ADMIN_EMAIL'])
+        ).first()
+        if not admin:
+            admin = User(
+                username=app.config['ADMIN_USERNAME'],
+                email=app.config['ADMIN_EMAIL'],
+                password_hash=generate_password_hash(app.config['ADMIN_PASSWORD']),
+                role='admin',
+                is_active=True,
+            )
+            db.session.add(admin)
+            app.logger.info('Admin user created: %s', app.config['ADMIN_USERNAME'])
 
-    # 2. Standard user
-    std_user = User.query.filter_by(username='user').first()
-    if not std_user:
-        std_user = User(
-            username='user',
-            email='user@medicalagency.com',
-            password_hash=generate_password_hash('user123'),
-            role='user',
-            is_active=True,
-        )
-        db.session.add(std_user)
-        app.logger.info('Standard user created: user')
+        # 2. Standard user (check both username and email to prevent duplicate conflicts)
+        std_user = User.query.filter(
+            (User.username == 'user') | 
+            (User.email == 'user@medicalagency.com')
+        ).first()
+        if not std_user:
+            std_user = User(
+                username='user',
+                email='user@medicalagency.com',
+                password_hash=generate_password_hash('user123'),
+                role='user',
+                is_active=True,
+            )
+            db.session.add(std_user)
+            app.logger.info('Standard user created: user')
 
-    db.session.commit()
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        app.logger.warning('Notice during user seeding: %s', e)

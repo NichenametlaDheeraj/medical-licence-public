@@ -52,22 +52,19 @@
             <i class="bi bi-clock-history"></i><span>Logged In Users & Audit Logs</span>
         </a>
         {% endif %}
-        <div class="nav-section-label">ACCOUNT</div>
-        <a href="{{ url_for('auth.change_username') }}" class="nav-item {% if request.endpoint and 'auth.change_username' in request.endpoint %}active{% endif %}">
-            <i class="bi bi-person-gear"></i><span>Change Username</span>
-        </a>
-        <a href="{{ url_for('auth.change_password') }}" class="nav-item {% if request.endpoint and 'auth.change_password' in request.endpoint %}active{% endif %}">
-            <i class="bi bi-key-fill"></i><span>Change Password</span>
+        <div class="nav-section-label">MY PROFILE</div>
+        <a href="{{ url_for('auth.profile') }}" class="nav-item {% if request.endpoint in ['auth.profile', 'auth.change_username', 'auth.change_password'] %}active{% endif %}">
+            <i class="bi bi-person-circle"></i><span>My Profile</span>
         </a>
         <a href="{{ url_for('auth.logout') }}" class="nav-item">
             <i class="bi bi-box-arrow-right"></i><span>Logout</span>
         </a>
     </nav>
     <div class="sidebar-footer d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-2">
+        <a href="{{ url_for('auth.profile') }}" class="d-flex align-items-center gap-2 text-decoration-none text-light text-truncate" title="View My Profile">
             <i class="bi bi-person-circle"></i>
-            <span>{{ current_user.username }}</span>
-        </div>
+            <span class="text-truncate">{{ current_user.username }}</span>
+        </a>
         <span class="badge {% if current_user.role == 'admin' %}bg-primary{% else %}bg-secondary{% endif %}" style="font-size:0.65rem;">
             {{ current_user.role|upper }}
         </span>
