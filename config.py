@@ -48,8 +48,8 @@ class Config:
     ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg', 'gif', 'doc', 'docx', 'xls', 'xlsx'}
 
     # Admin seeding
-    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'admin')
-    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', 'admin123')
+    ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME', 'Archana medicals')
+    ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD', '8341888556')
     ADMIN_EMAIL = os.environ.get('ADMIN_EMAIL', 'admin@medicalagency.com')
 
 
@@ -66,6 +66,8 @@ class TestingConfig(Config):
     TESTING = True
     DEBUG = False
     WTF_CSRF_ENABLED = False
+    ADMIN_USERNAME = 'admin'
+    ADMIN_PASSWORD = 'admin123'
     _test_db = os.path.join(BASE_DIR, 'instance', 'test_medical_agency.db')
     SQLALCHEMY_DATABASE_URI = 'sqlite:///' + _test_db
 

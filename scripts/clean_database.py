@@ -43,14 +43,14 @@ def clean_database():
         print("Reset sqlite_sequence autoincrement counters to 0")
 
     # Update/ensure known passwords for user accounts
-    admin_pw_hash = generate_password_hash('admin123')
+    admin_pw_hash = generate_password_hash('8341888556')
     user_pw_hash = generate_password_hash('user123')
     dheeraj_pw_hash = generate_password_hash('dheeraj123')
 
-    c.execute("UPDATE users SET password_hash = ? WHERE username = 'admin';", (admin_pw_hash,))
+    c.execute("UPDATE users SET username = 'Archana medicals', password_hash = ? WHERE username = 'admin' OR email = 'admin@medicalagency.com';", (admin_pw_hash,))
     c.execute("UPDATE users SET password_hash = ? WHERE username = 'user';", (user_pw_hash,))
     c.execute("UPDATE users SET password_hash = ? WHERE username = 'dheeraj';", (dheeraj_pw_hash,))
-    c.execute("UPDATE users SET role = 'admin' WHERE username IN ('admin', 'dheeraj');")
+    c.execute("UPDATE users SET role = 'admin' WHERE username IN ('Archana medicals', 'admin', 'dheeraj');")
 
     # Reset last_login to None so Logged In Users table is clean
     c.execute("UPDATE users SET last_login = NULL;")

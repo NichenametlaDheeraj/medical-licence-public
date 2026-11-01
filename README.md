@@ -87,8 +87,8 @@ DATABASE_URL=sqlite:///medical_agency.db
 UPLOAD_FOLDER=uploads
 GENERATED_FOLDER=generated_documents
 MAX_CONTENT_LENGTH=10485760
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=admin123
+ADMIN_USERNAME=Archana medicals
+ADMIN_PASSWORD=8341888556
 ADMIN_EMAIL=admin@medicalagency.com
 ```
 
@@ -123,7 +123,7 @@ The system enforces strict permission boundaries between **Administrator** and *
 
 | Role | Username | Password | Email | Purpose |
 | :--- | :--- | :--- | :--- | :--- |
-| **Admin** | `admin` | `admin123` | `admin@medicalagency.com` | Full administrative access, user management, audit logs, PDF generation & official approvals |
+| **Admin** | `Archana medicals` | `8341888556` | `admin@medicalagency.com` | Full administrative access, user management, audit logs, PDF generation & official approvals |
 | **Staff / Operator** | `user` | `user123` | `user@medicalagency.com` | Standard operator for data entry and application draft management |
 
 Both accounts are automatically seeded into the database on startup.

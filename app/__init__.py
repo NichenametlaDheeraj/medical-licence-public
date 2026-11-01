@@ -97,10 +97,11 @@ def _seed_users(app):
     from werkzeug.security import generate_password_hash
 
     try:
-        # 1. Admin user (check both username and email to prevent duplicate conflicts if username was changed)
+        # 1. Admin user (search by ADMIN_EMAIL or ADMIN_USERNAME or 'admin')
         admin = User.query.filter(
-            (User.username == app.config['ADMIN_USERNAME']) | 
-            (User.email == app.config['ADMIN_EMAIL'])
+            (User.email == app.config['ADMIN_EMAIL']) |
+            (User.username == app.config['ADMIN_USERNAME']) |
+            (User.username == 'admin')
         ).first()
         if not admin:
             admin = User(
@@ -112,6 +113,14 @@ def _seed_users(app):
             )
             db.session.add(admin)
             app.logger.info('Admin user created: %s', app.config['ADMIN_USERNAME'])
+        else:
+            # Synchronize admin credentials with configuration
+            if app.config.get('ADMIN_USERNAME') and admin.username != app.config['ADMIN_USERNAME']:
+                admin.username = app.config['ADMIN_USERNAME']
+            if app.config.get('ADMIN_PASSWORD'):
+                from werkzeug.security import check_password_hash
+                if not check_password_hash(admin.password_hash, app.config['ADMIN_PASSWORD']):
+                    admin.password_hash = generate_password_hash(app.config['ADMIN_PASSWORD'])
 
         # 2. Standard user (check both username and email to prevent duplicate conflicts)
         std_user = User.query.filter(
